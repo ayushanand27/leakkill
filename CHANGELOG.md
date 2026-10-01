@@ -9,6 +9,8 @@
 - New detectors: Shopify, PyPI, Docker Hub, Twilio, Postman, Perplexity, Linear, Azure Storage, Stripe
   test-mode keys. 31 detectors in total, 17 verifiable, 6 revocable.
 - `scan`/`verify --report FILE` writes the incident report from the same run.
+- `revoke` warns about side effects before acting (e.g. revoking a Slack bot token uninstalls the app).
+- Live-tested with real Slack (bot token and webhook), Stripe test key and Hugging Face token.
 - OpenRouter keys are no longer misreported as OpenAI keys.
 
 ## 0.3.0 (2026-10-02)

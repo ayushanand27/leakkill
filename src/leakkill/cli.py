@@ -132,6 +132,9 @@ def cmd_revoke(args):
     print(f"\n{len(live)} live secret(s): {len(auto)} can be revoked automatically, {len(manual)} need manual steps.")
     for i in manual:
         print(f"  #{i.n} {i.kind}: {providers.PROVIDERS[i.kind].manual}")
+    for i in auto:
+        if providers.PROVIDERS[i.kind].side_effect:
+            print(f"  note for #{i.n} {i.kind}: {providers.PROVIDERS[i.kind].side_effect}")
     if not args.yes:
         if auto:
             print(f"\nDry run. Re-run with --yes to revoke: " + ", ".join(f"#{i.n}" for i in auto))

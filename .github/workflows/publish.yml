@@ -43,3 +43,9 @@ jobs:
         with: { name: dist, path: dist/ }
       - run: gh release create "$TAG" dist/* --target "$GITHUB_SHA" --title "leakkill $TAG" --notes-file CHANGELOG.md
         env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ needs.build.outputs.tag }}" }
+      - name: Move the major tag (e.g. v0) so `uses: ayushanand27/leakkill@v0` gets this release
+        env: { TAG: "${{ needs.build.outputs.tag }}" }
+        run: |
+          major="${TAG%%.*}"
+          git tag -f "$major" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$major"

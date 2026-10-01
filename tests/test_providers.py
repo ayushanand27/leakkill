@@ -127,3 +127,48 @@ def test_redirects_are_never_followed():
     code, _, _ = P.http("GET", f"http://127.0.0.1:{srv.server_port}/start", {"Authorization": "Bearer secret"})
     srv.server_close()
     assert code == 302 and [p for p, _ in hits] == ["/start"]
+
+
+def test_huggingface_live_with_name_and_role(fake):
+    fake({("GET", "https://huggingface.co/api/whoami-v2"):
+          (200, {}, b'{"name":"ayush","auth":{"accessToken":{"role":"read"}}}')})
+    r = P.verify("Hugging Face token", "hf_x")
+    assert (r.status, r.identity, r.note) == (P.LIVE, "ayush", "token role: read")
+
+def test_simple_bearer_providers_live_and_dead(fake):
+    cases = {"OpenRouter key": "https://openrouter.ai/api/v1/key",
+             "DigitalOcean token": "https://api.digitalocean.com/v2/account",
+             "Replicate token": "https://api.replicate.com/v1/account",
+             "Groq key": "https://api.groq.com/openai/v1/models",
+             "SendGrid key": "https://api.sendgrid.com/v3/scopes"}
+    for kind, url in cases.items():
+        f = fake({("GET", url): (200, {}, b'{}')})
+        assert P.verify(kind, "tok").status == P.LIVE, kind
+        assert f.calls[0][2]["Authorization"] == "Bearer tok"
+        fake({("GET", url): (401, {}, b'')})
+        assert P.verify(kind, "tok").status == P.DEAD, kind
+
+def test_digitalocean_identity(fake):
+    fake({("GET", "https://api.digitalocean.com/v2/account"): (200, {}, b'{"account":{"email":"a@b.c"}}')})
+    assert P.verify("DigitalOcean token", "dop_v1_x").identity == "a@b.c"
+
+def test_sendgrid_revoke_deletes_itself_by_key_id(fake):
+    key = "SG.KEYID123.secretpart"
+    f = fake({("DELETE", "https://api.sendgrid.com/v3/api_keys/KEYID123"): (204, {}, b"")})
+    assert P.revoke("SendGrid key", key, P.Result(P.LIVE))[0]
+    assert f.calls[0][2]["Authorization"] == f"Bearer {key}"
+
+def test_sendgrid_revoke_without_permission_falls_back(fake):
+    fake({("DELETE", "https://api.sendgrid.com/v3/api_keys/K"): (403, {}, b"")})
+    ok, msg = P.revoke("SendGrid key", "SG.K.s", P.Result(P.LIVE))
+    assert not ok and "dashboard" in msg
+
+def test_stripe_test_mode_labelled(fake):
+    fake({("GET", "https://api.stripe.com/v1/account"): (200, {}, b'{"id":"acct_1","email":"a@b.c"}')})
+    r = P.verify("Stripe key", "sk_test_x")
+    assert r.status == P.LIVE and r.note == "test mode"
+
+def test_every_detector_has_remediation():
+    from leakkill.scanner import RULES
+    for kind in list(RULES) + ["High-entropy secret"]:
+        assert P.PROVIDERS[kind].manual, kind

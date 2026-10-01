@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 (unreleased)
+
+- GitHub Action: `uses: ayushanand27/leakkill@v0` scans in CI, fails the build on leaks, and writes the
+  incident report to the job summary (`verify: true` fails only on live keys).
+- New providers with verification: Hugging Face, OpenRouter, Groq, Replicate, DigitalOcean, SendGrid
+  (SendGrid keys can also revoke themselves).
+- New detectors: Shopify, PyPI, Docker Hub, Twilio, Postman, Perplexity, Linear, Azure Storage, Stripe
+  test-mode keys. 31 detectors in total, 17 verifiable, 6 revocable.
+- `scan`/`verify --report FILE` writes the incident report from the same run.
+- OpenRouter keys are no longer misreported as OpenAI keys.
+
 ## 0.3.0 (2026-10-02)
 
 First public release.

@@ -52,8 +52,9 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 | Slack tokens (`xox…`) | ✅ user and workspace | ✅ `auth.revoke` |
 | Discord webhooks | ✅ server and channel | ✅ deletes the webhook |
 | AWS access key and secret | ✅ IAM ARN and account (STS, needs no permissions) | ⚠️ deactivates the key if it has `iam:UpdateAccessKey`, otherwise console steps |
-| Stripe, OpenAI, Anthropic, npm, Telegram, Slack webhooks | ✅ | ❌ the provider has no API for it, so you get the exact page or command |
-| Google API keys, private keys, JWTs, credentials in URLs, generic high-entropy secrets | detected, not verifiable | step-by-step rotation guidance |
+| SendGrid (`SG.`) | ✅ scopes | ✅ the key deletes itself if it has API-key permissions |
+| Stripe (live and test keys), OpenAI, Anthropic, OpenRouter, Groq, Hugging Face, Replicate, DigitalOcean, npm, Telegram, Slack webhooks | ✅ (account or username where the API returns it) | ❌ the provider has no API for it, so you get the exact page or command |
+| Google API keys, Shopify, PyPI, Docker Hub, Twilio, Postman, Perplexity, Linear, Azure Storage, private keys, JWTs, credentials in URLs, generic high-entropy secrets | detected, not verified | step-by-step rotation guidance |
 
 ## How it compares
 
@@ -61,9 +62,9 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 |---|---|---|---|---|---|
 | Price | **Free (MIT)** | Free (MIT) | Free (AGPL) | Free for individuals, roughly $15–30/dev/month for teams | Free on public repos, $19/committer/month on private |
 | Runs fully local | ✅ | ✅ | ✅ | ❌ SaaS | ❌ GitHub only |
-| Detectors | ~17 | 150+ | 800+ | 550+ | [provider list](https://docs.github.com/en/code-security/secret-scanning/introduction/supported-secret-scanning-patterns) |
-| Checks if a key is live | ✅ 11 providers | ❌ | ✅ (its main strength) | ✅ | ✅ some |
-| Revokes from the CLI | ✅ 5 providers | ❌ | ❌ (Enterprise) | partial | ❌ |
+| Detectors | 31 | 150+ | 800+ | 550+ | [provider list](https://docs.github.com/en/code-security/secret-scanning/introduction/supported-secret-scanning-patterns) |
+| Checks if a key is live | ✅ 17 providers | ❌ | ✅ (its main strength) | ✅ | ✅ some |
+| Revokes from the CLI | ✅ 6 providers | ❌ | ❌ (Enterprise) | partial | ❌ |
 | Incident report and history-purge steps | ✅ Markdown file | ❌ | ❌ | ✅ dashboard and playbooks | ❌ |
 | Guards AI coding agents | ✅ Claude Code hooks | ❌ | ❌ | ❌ | ❌ |
 | Dependencies | none | Go binary | Go binary | CLI + account | GitHub |
@@ -131,12 +132,26 @@ This was tested live with the Claude Code CLI: prompts with keys, `Read .env`, `
 command that builds the file name at runtime can get past it. Pair it with OS-level permissions for
 hard guarantees.
 
-## Use in CI (GitHub Actions)
+## Use in CI (GitHub Action)
 
 ```yaml
-- run: pip install leakkill
-- run: leakkill scan --exclude-tests .
+- uses: actions/checkout@v4
+- uses: ayushanand27/leakkill@v0
 ```
+
+The build fails if a secret is found, and the incident report appears in the job summary. Options:
+
+```yaml
+- uses: ayushanand27/leakkill@v0
+  with:
+    path: .               # files or directories to scan
+    exclude-tests: true   # skip test_* files and tests/ dirs
+    history: true         # scan every commit (needs `fetch-depth: 0` on checkout)
+    verify: true          # check secrets with their providers; fail only if one is LIVE
+```
+
+The action exposes `found` (the number of unique secrets) as an output. Outside GitHub Actions, use
+`pip install leakkill && leakkill scan .`.
 
 ## Use with the pre-commit framework
 

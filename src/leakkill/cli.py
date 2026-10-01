@@ -92,6 +92,10 @@ def summary(items):
     return s + "."
 
 
+def _target(args):
+    return "git history" if args.history else "staged changes" if args.staged else " ".join(args.paths or ["."])
+
+
 def cmd_scan(args, verify=False):
     items = collect(args)
     if verify and items:
@@ -101,6 +105,9 @@ def cmd_scan(args, verify=False):
     else:
         print_items(items)
         print(summary(items))
+    if args.report:
+        with open(args.report, "w", encoding="utf-8") as f:
+            f.write(report.render(items, _target(args), verified=verify))
     if verify:
         return 1 if any(i.result.status == providers.LIVE for i in items) else 0
     return 1 if items else 0
@@ -143,7 +150,7 @@ def cmd_report(args):
     items = collect(args)
     if items and not args.no_verify:
         verify_all(items)
-    target = "git history" if args.history else "staged changes" if args.staged else " ".join(args.paths or ["."])
+    target = _target(args)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(report.render(items, target, verified=not args.no_verify))
     print(f"Report written to {os.path.abspath(args.output)} ({len(items)} unique secret(s)).")
@@ -164,8 +171,9 @@ def parser():
     p = argparse.ArgumentParser(prog="leakkill", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--version", action="version", version=f"leakkill {__version__}")
     sub = p.add_subparsers(dest="cmd")
-    sub.add_parser("scan", parents=[common], help="find secrets (offline)")
-    sub.add_parser("verify", parents=[common], help="find secrets and check which are live")
+    for name, h in (("scan", "find secrets (offline)"), ("verify", "find secrets and check which are live")):
+        sp = sub.add_parser(name, parents=[common], help=h)
+        sp.add_argument("--report", metavar="FILE", help="also write the Markdown incident report to FILE")
     r = sub.add_parser("revoke", parents=[common], help="revoke live secrets (dry run unless --yes)")
     r.add_argument("--only", help="comma-separated ids from `leakkill verify`, e.g. 1,3")
     r.add_argument("--yes", action="store_true", help="actually revoke")

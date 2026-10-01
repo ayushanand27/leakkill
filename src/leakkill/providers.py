@@ -143,7 +143,8 @@ def stripe_verify(s, ctx):
     code, _, body = http("GET", "https://api.stripe.com/v1/account", {"Authorization": auth})
     if code == 200:
         j = _json(body)
-        return Result(LIVE, f"{j.get('id')} {j.get('email') or j.get('business_profile', {}).get('name') or ''}".strip())
+        return Result(LIVE, f"{j.get('id')} {j.get('email') or j.get('business_profile', {}).get('name') or ''}".strip(),
+                      "test mode" if "_test_" in s else "LIVE MODE: real money")
     if code == 403:  # restricted key without account read permission: valid but limited
         return Result(LIVE, note="restricted key")
     return _by_status(code)
@@ -222,6 +223,61 @@ def telegram_verify(s, ctx):
     return _by_status(code, dead=(401, 404))
 
 
+# ---------------------------------------------------------------- more AI / dev platforms
+def _bearer_get(url, s):
+    return http("GET", url, {"Authorization": f"Bearer {s}"})
+
+
+def huggingface_verify(s, ctx):
+    code, _, body = _bearer_get("https://huggingface.co/api/whoami-v2", s)
+    if code == 200:
+        j = _json(body)
+        role = (j.get("auth") or {}).get("accessToken", {}).get("role", "")
+        return Result(LIVE, j.get("name", "?"), f"token role: {role}" if role else "")
+    return _by_status(code)
+
+
+def openrouter_verify(s, ctx):
+    code, _, body = _bearer_get("https://openrouter.ai/api/v1/key", s)
+    if code == 200:
+        d = _json(body).get("data") or {}
+        return Result(LIVE, d.get("label", ""), f"limit remaining: {d.get('limit_remaining')}")
+    return _by_status(code)
+
+
+def digitalocean_verify(s, ctx):
+    code, _, body = _bearer_get("https://api.digitalocean.com/v2/account", s)
+    if code == 200:
+        return Result(LIVE, (_json(body).get("account") or {}).get("email", "?"))
+    return _by_status(code)
+
+
+def replicate_verify(s, ctx):
+    code, _, body = _bearer_get("https://api.replicate.com/v1/account", s)
+    return _by_status(code, identity=_json(body).get("username", "") if code == 200 else "")
+
+
+def groq_verify(s, ctx):
+    code, _, _ = _bearer_get("https://api.groq.com/openai/v1/models", s)
+    return _by_status(code)
+
+
+def sendgrid_verify(s, ctx):
+    code, _, body = _bearer_get("https://api.sendgrid.com/v3/scopes", s)
+    if code == 200:
+        return Result(LIVE, note=f"{len(_json(body).get('scopes', []))} scopes")
+    return _by_status(code)
+
+
+def sendgrid_revoke(s, res):
+    # Key format is SG.<api_key_id>.<secret>, so a leaked key can delete itself if it has API-key permissions.
+    code, _, _ = http("DELETE", f"https://api.sendgrid.com/v3/api_keys/{s.split('.')[1]}",
+                      {"Authorization": f"Bearer {s}"})
+    if code == 204:
+        return True, "HTTP 204"
+    return False, f"HTTP {code}: this key can't delete itself, use the dashboard"
+
+
 @dataclass
 class Provider:
     verify: object = None
@@ -241,12 +297,31 @@ PROVIDERS = {
     "Discord webhook": Provider(discord_webhook_verify, discord_webhook_revoke,
                                 "Server Settings > Integrations > Webhooks > delete the webhook."),
     "Stripe key": Provider(stripe_verify, None,
-                           "Roll the key at https://dashboard.stripe.com/apikeys (Stripe has no API to revoke keys)."),
+                           "Roll the key at https://dashboard.stripe.com/apikeys (Stripe has no API to revoke keys). "
+                           "Test-mode keys can't move money but still expose your test data."),
     "AWS access key": Provider(aws_verify, aws_revoke,
                                "Deactivate then delete it in IAM > Users > Security credentials "
                                "(https://console.aws.amazon.com/iam/home#/security_credentials), then check CloudTrail "
                                "for activity from this key."),
     "OpenAI API key": Provider(openai_verify, None, "Revoke it at https://platform.openai.com/api-keys."),
+    "OpenRouter key": Provider(openrouter_verify, None, "Delete it at https://openrouter.ai/settings/keys."),
+    "Hugging Face token": Provider(huggingface_verify, None, "Invalidate it at https://huggingface.co/settings/tokens."),
+    "Groq key": Provider(groq_verify, None, "Delete it at https://console.groq.com/keys."),
+    "Replicate token": Provider(replicate_verify, None, "Delete it at https://replicate.com/account/api-tokens."),
+    "SendGrid key": Provider(sendgrid_verify, sendgrid_revoke,
+                             "Delete it at https://app.sendgrid.com/settings/api_keys."),
+    "DigitalOcean token": Provider(digitalocean_verify, None,
+                                   "Delete it at https://cloud.digitalocean.com/account/api/tokens."),
+    "Perplexity key": Provider(None, None, "Delete it in Perplexity: Settings > API keys."),
+    "Shopify token": Provider(None, None, "Rotate it in Shopify admin: Settings > Apps > Develop apps > your app > "
+                                          "API credentials."),
+    "PyPI token": Provider(None, None, "Remove it at https://pypi.org/manage/account/token/."),
+    "Docker Hub token": Provider(None, None, "Delete it in Docker Hub: Account settings > Personal access tokens."),
+    "Twilio API key": Provider(None, None, "Delete it in the Twilio console: Account > API keys & tokens."),
+    "Postman key": Provider(None, None, "Delete it in Postman: Settings > API keys."),
+    "Linear key": Provider(None, None, "Revoke it in Linear: Settings > Security & access > Personal API keys."),
+    "Azure storage key": Provider(None, None, "Rotate it in the Azure portal: Storage account > Security + networking > "
+                                              "Access keys > Rotate key."),
     "Anthropic API key": Provider(anthropic_verify, None, "Delete it at https://console.anthropic.com/settings/keys."),
     "npm token": Provider(npm_verify, None, "Run `npm token list` then `npm token revoke <id>`, "
                                             "or use https://www.npmjs.com/settings/<user>/tokens."),

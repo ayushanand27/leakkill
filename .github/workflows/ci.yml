@@ -8,15 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: actionlint (pinned release, checksum-verified before it runs)
-        env:
-          V: "1.7.12"
-          SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
-        run: |
-          curl -sSfLo actionlint.tgz "https://github.com/rhysd/actionlint/releases/download/v${V}/actionlint_${V}_linux_amd64.tar.gz"
-          echo "${SHA256}  actionlint.tgz" | sha256sum -c -
-          tar xzf actionlint.tgz actionlint
-          ./actionlint -color
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.25" }
+      - name: actionlint (exact version; Go verifies every module against sum.golang.org)
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -color
   test:
     strategy:
       fail-fast: false

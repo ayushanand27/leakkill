@@ -4,12 +4,15 @@
 Usage:
   python secretscan.py [PATH ...]      scan files/dirs (default: .)
   python secretscan.py --staged        scan only git-staged changes (pre-commit)
+  python secretscan.py --history       scan every commit in git history
   python secretscan.py --install-hook  install as .git/hooks/pre-commit
+  python secretscan.py --install-claude-hook   guard Claude Code (prompts + tool calls)
+  python secretscan.py --guard         hook entry point: reads Claude Code hook JSON on stdin
 Suppress a line with:  # secretscan:ignore
 Add --exclude-tests to skip test_* files.
 Exit code 1 if anything is found.
 """
-import math, os, re, subprocess, sys
+import json, math, os, re, subprocess, sys
 
 RULES = {
     "AWS access key":      re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
@@ -86,6 +89,81 @@ def scan_staged():
             out += scan_text(line[1:], cur)
     return out
 
+SENSITIVE_FILE = re.compile(
+    r"(?i)(^|[\\/])(\.env(\.[\w-]+)?|id_rsa|id_ed25519|credentials|\.npmrc|\.pypirc|[^\\/]*\.(pem|key|p12|pfx))$")
+READ_CMD = re.compile(r"(?i)\b(cat|type|less|more|head|tail|Get-Content|gc|bat)\b[^|;&]*"
+                      r"(\.env\b|id_rsa|id_ed25519|\.pem\b|\.pypirc|\.npmrc)")
+READ_TOOLS = {"Read", "NotebookRead"}
+
+def scan_history():
+    log = subprocess.run(["git", "log", "-p", "--all", "-U0", "--no-color", "--format=commit %h"],
+                         capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
+    out, commit, cur = [], "?", "?"
+    for line in log.splitlines():
+        if line.startswith("commit "):
+            commit = line[7:]
+        elif line.startswith("+++ b/"):
+            cur = line[6:]
+        elif line.startswith("+") and not line.startswith("+++"):
+            out += scan_text(line[1:], f"{commit}:{cur}")
+    return out
+
+def _strings(obj):
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            yield from _strings(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _strings(v)
+
+def guard_check(event):
+    """Return a list of human-readable reasons to block this Claude Code hook event."""
+    name, reasons = event.get("hook_event_name"), []
+    if name == "UserPromptSubmit":
+        for _, ln, kind, m in scan_text(event.get("prompt", ""), "prompt"):
+            reasons.append(f"prompt line {ln} contains a {kind} ({m})")
+    elif name == "PreToolUse":
+        tool, ti = event.get("tool_name", ""), event.get("tool_input") or {}
+        path = ti.get("file_path") or ti.get("path") or ti.get("notebook_path") or ""
+        if tool in READ_TOOLS and SENSITIVE_FILE.search(path):
+            reasons.append(f"reading {path} would put its secrets into the model context")
+        cmd = ti.get("command", "") if tool == "Bash" else ""
+        if cmd and READ_CMD.search(cmd):
+            reasons.append("shell command reads a secrets file into the model context")
+        if not (path and SENSITIVE_FILE.search(path)):  # writing real secrets into .env is fine
+            for text in _strings(ti):
+                for _, ln, kind, m in scan_text(text, tool):
+                    reasons.append(f"{tool} input contains a {kind} ({m}); use an environment variable instead")
+    return reasons
+
+def guard(raw):
+    try:
+        event = json.loads(raw)
+    except ValueError:
+        return 0  # never break the agent on malformed input
+    reasons = guard_check(event)
+    if reasons:
+        print("secretscan blocked this action:\n- " + "\n- ".join(dict.fromkeys(reasons)), file=sys.stderr)
+        return 2  # Claude Code: exit 2 = block, stderr is shown
+    return 0
+
+def install_claude_hook():
+    path = os.path.join(".claude", "settings.json")
+    os.makedirs(".claude", exist_ok=True)
+    cfg = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+    cmd = f'python "{os.path.abspath(__file__)}" --guard'
+    hooks = cfg.setdefault("hooks", {})
+    for event, matcher in (("UserPromptSubmit", None), ("PreToolUse", "Read|Write|Edit|MultiEdit|Bash")):
+        entry = {"hooks": [{"type": "command", "command": cmd}]}
+        if matcher:
+            entry["matcher"] = matcher
+        groups = [g for g in hooks.get(event, []) if "--guard" not in json.dumps(g)]
+        hooks[event] = groups + [entry]
+    json.dump(cfg, open(path, "w", encoding="utf-8"), indent=2)
+    print("Installed Claude Code guard in", path)
+
 def install_hook():
     hook = os.path.join(".git", "hooks", "pre-commit")
     if not os.path.isdir(".git"):
@@ -98,7 +176,11 @@ def install_hook():
 def main(argv):
     if "--install-hook" in argv:
         return install_hook()
-    findings = scan_staged() if "--staged" in argv else scan_paths([a for a in argv if not a.startswith("--")] or ["."])
+    if "--install-claude-hook" in argv:
+        return install_claude_hook()
+    if "--guard" in argv:
+        sys.exit(guard(sys.stdin.read()))
+    findings = scan_history() if "--history" in argv else scan_staged() if "--staged" in argv else scan_paths([a for a in argv if not a.startswith("--")] or ["."])
     if "--exclude-tests" in argv:
         findings = [f for f in findings if not os.path.basename(f[0]).startswith("test_")]
     for label, ln, name, masked in findings:
@@ -106,5 +188,8 @@ def main(argv):
     print(f"\n{len(findings)} potential secret(s) found." if findings else "Clean.")
     sys.exit(1 if findings else 0)
 
-if __name__ == "__main__":
+def main_cli():
     main(sys.argv[1:])
+
+if __name__ == "__main__":
+    main_cli()

@@ -70,6 +70,14 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 Detector and pricing figures come from public sources in October 2026. Use what fits your needs:
 if breadth of detection matters most, run Gitleaks or TruffleHog alongside secretscan.
 
+### Tested with real credentials
+
+End to end on Windows with a real GitHub token and a real Discord webhook: `verify` reported both
+LIVE with the right account and channel, `revoke --yes` returned GitHub `202` and Discord `204`, and
+re-running `verify` reported both DEAD. Against the real AWS, GitLab, Anthropic and npm APIs, invalid
+keys are correctly reported DEAD. Providers not yet tested with a live key (Slack, Stripe, OpenAI,
+Telegram) are covered by tests using simulated API responses.
+
 ### Benchmark (reproducible, run October 2026)
 
 Noise on clean, popular repos (unique secrets reported, default settings):

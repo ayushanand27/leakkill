@@ -1,5 +1,5 @@
 """Claude Code hook: keep secrets out of AI coding agents (prompts, file reads, shell reads, generated code)."""
-import json, os, re, sys
+import json, os, re, stat, sys
 
 from .scanner import scan_text
 
@@ -92,6 +92,6 @@ def install_git_hook():
     cmd = _self_cmd("scan --staged").replace("\\", "/")
     with open(hook, "w", newline="\n") as f:
         f.write(f'#!/bin/sh\n{cmd} || {{ echo "Commit blocked by leakkill."; exit 1; }}\n')
-    os.chmod(hook, 0o755)
+    os.chmod(hook, os.stat(hook).st_mode | stat.S_IXUSR)  # git only needs the owner to be able to run it
     print("Installed", hook)
     return 0

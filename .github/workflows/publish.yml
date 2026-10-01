@@ -20,8 +20,12 @@ jobs:
             echo "tag $GITHUB_REF_NAME != version $v"; exit 1
           fi
           echo "tag=v$v" >> "$GITHUB_OUTPUT"
-      - run: pip install -e . pytest && pytest -q
-      - run: pip install build twine && python -m build && twine check dist/*
+      - name: Install locked tooling (exact versions, SHA-256 verified, wheels only)
+        run: |
+          pip install --require-hashes --only-binary :all: -r requirements/ci.txt
+          pip install --no-deps --no-build-isolation -e .
+      - run: pytest -q
+      - run: python -m build --no-isolation && twine check dist/*
       - uses: actions/upload-artifact@v4
         with: { name: dist, path: dist/ }
   pypi:

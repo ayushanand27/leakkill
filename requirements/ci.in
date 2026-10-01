@@ -1,0 +1,6 @@
+# CI and release tooling. Regenerate with:
+#   uv pip compile requirements/ci.in --universal --python-version 3.9 --generate-hashes -o requirements/ci.txt
+pytest
+build
+twine
+setuptools>=77

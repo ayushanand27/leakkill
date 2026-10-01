@@ -70,3 +70,9 @@ def test_scan_report_option_writes_report_in_same_run(tmp_path, monkeypatch):
     assert cli.main(["verify", "--report", "r.md"]) == 1
     md = (tmp_path / "r.md").read_text(encoding="utf-8")
     assert "**1 live**" in md and GH not in md
+
+
+def test_revoke_dry_run_warns_about_side_effects(tmp_path, monkeypatch, capsys):
+    project(tmp_path, monkeypatch); fake_verify(monkeypatch)
+    cli.main(["revoke"])
+    assert "GitHub emails the token's owner" in capsys.readouterr().out

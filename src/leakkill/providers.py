@@ -283,15 +283,19 @@ class Provider:
     verify: object = None
     revoke: object = None
     manual: str = ""
+    side_effect: str = ""  # shown before revoking, so nobody is surprised
 
 
 PROVIDERS = {
     "GitHub token": Provider(github_verify, github_revoke,
-                             "Delete it at https://github.com/settings/tokens (or the app's settings for gho_/ghu_ tokens)."),
+                             "Delete it at https://github.com/settings/tokens (or the app's settings for gho_/ghu_ tokens).",
+                             "GitHub emails the token's owner that it was revoked as exposed."),
     "GitLab token": Provider(gitlab_verify, gitlab_revoke,
                              "Revoke it at https://gitlab.com/-/user_settings/personal_access_tokens."),
     "Slack token": Provider(slack_verify, slack_revoke,
-                            "Regenerate it in your app's 'OAuth & Permissions' page at https://api.slack.com/apps."),
+                            "Regenerate it in your app's 'OAuth & Permissions' page at https://api.slack.com/apps.",
+                            "For apps without token rotation this uninstalls the app from the workspace: its other "
+                            "tokens and webhooks stop working too, and it must be reinstalled."),
     "Slack webhook": Provider(slack_webhook_verify, None,
                               "Remove the webhook in your app's 'Incoming Webhooks' page at https://api.slack.com/apps."),
     "Discord webhook": Provider(discord_webhook_verify, discord_webhook_revoke,
@@ -309,7 +313,8 @@ PROVIDERS = {
     "Groq key": Provider(groq_verify, None, "Delete it at https://console.groq.com/keys."),
     "Replicate token": Provider(replicate_verify, None, "Delete it at https://replicate.com/account/api-tokens."),
     "SendGrid key": Provider(sendgrid_verify, sendgrid_revoke,
-                             "Delete it at https://app.sendgrid.com/settings/api_keys."),
+                             "Delete it at https://app.sendgrid.com/settings/api_keys.",
+                             "Deleting is permanent: anything still using this key stops sending email."),
     "DigitalOcean token": Provider(digitalocean_verify, None,
                                    "Delete it at https://cloud.digitalocean.com/account/api/tokens."),
     "Perplexity key": Provider(None, None, "Delete it in Perplexity: Settings > API keys."),

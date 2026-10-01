@@ -74,11 +74,20 @@ if breadth of detection matters most, run Gitleaks or TruffleHog alongside leakk
 
 ### Tested with real credentials
 
-End to end on Windows with a real GitHub token and a real Discord webhook: `verify` reported both
-LIVE with the right account and channel, `revoke --yes` returned GitHub `202` and Discord `204`, and
-re-running `verify` reported both DEAD. Against the real AWS, GitLab, Anthropic and npm APIs, invalid
-keys are correctly reported DEAD. Providers not yet tested with a live key (Slack, Stripe, OpenAI,
-Telegram) are covered by tests using simulated API responses.
+End to end on Windows with real, throwaway credentials:
+
+| Credential | `verify` | `revoke --yes` | `verify` again |
+|---|---|---|---|
+| GitHub token | LIVE, correct user | REVOKED (HTTP 202) | DEAD |
+| Discord webhook | LIVE, correct server and channel | REVOKED (HTTP 204) | DEAD |
+| Slack bot token | LIVE, correct bot and workspace | REVOKED | DEAD (the app was uninstalled, as Slack documents) |
+| Slack webhook | LIVE | (died with the app) | DEAD |
+| Stripe test key | LIVE, correct account, "test mode" | manual roll in dashboard | |
+| Hugging Face token | LIVE, correct user and token role | manual delete | |
+
+Against the real AWS, GitLab, Anthropic and npm APIs, invalid keys are correctly reported DEAD.
+Providers not yet tested with a live key (OpenAI, OpenRouter, Groq, Replicate, DigitalOcean,
+SendGrid, Telegram) are covered by tests using simulated API responses.
 
 ### Benchmark (reproducible, run October 2026)
 

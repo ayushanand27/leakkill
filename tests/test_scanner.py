@@ -88,3 +88,22 @@ def test_huge_lines_scan_in_linear_time():
         t = time.perf_counter()
         scan_line(line)
         assert time.perf_counter() - t < 3, line[:20]
+
+
+def test_every_rule_has_prefilter_keywords_that_its_matches_contain():
+    """A rule without (correct) keywords would be silently skipped by the prefilter."""
+    from leakkill.scanner import RULES, KEYWORDS, _has_keyword
+    samples = dict(NEW, **{
+        "AWS access key": "AKIAIOSFODNN7EXAMPLE", "GitHub token": GH, "GitLab token": "glpat-" + "x1Y2z3A4b5C6d7E8f9G0",
+        "Slack token": "xoxb-1234567890-abcdefghij", "Slack webhook": "https://hooks.slack.com/services/T0001/B0002/" + "a" * 24,
+        "Discord webhook": "https://discord.com/api/webhooks/1/" + "a" * 68, "Anthropic API key": "sk-ant-api03-" + "A" * 90,
+        "OpenAI API key": "sk-proj-" + "B1" * 40, "npm token": "npm_" + "a1B2c3D4e5" * 3 + "a1B2c3",
+        "Telegram bot token": "123456789:AA" + "h" * 33, "Google API key": "AIza" + "A" * 35,
+        "Private key block": "-----BEGIN RSA PRIVATE KEY-----", "JWT": "eyJ" + "a" * 12 + ".eyJ" + "b" * 12 + "." + "c" * 12,
+        "Credentials in URL": "postgres://app:S3cr3tPw9@db.prod.internal",
+        "AWS secret key": 'aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"',
+    })
+    assert set(KEYWORDS) == set(RULES)
+    for kind in RULES:
+        assert _has_keyword(KEYWORDS[kind], samples[kind], samples[kind].lower()), kind
+        assert kind in kinds(samples[kind]), kind

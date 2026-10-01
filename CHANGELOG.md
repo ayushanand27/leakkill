@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.4.0 (unreleased)
+## 0.4.1 (2026-10-02)
+
+- Fix: a mistyped command (e.g. `leakkill verfiy`) or a missing path was scanned as an empty path and
+  reported "Clean.". It is now an error (exit code 2) with a "did you mean" hint.
+
+## 0.4.0 (2026-10-02)
 
 - GitHub Action: `uses: ayushanand27/leakkill@v0` scans in CI, fails the build on leaks, and writes the
   incident report to the job summary (`verify: true` fails only on live keys).

@@ -76,3 +76,16 @@ def test_revoke_dry_run_warns_about_side_effects(tmp_path, monkeypatch, capsys):
     project(tmp_path, monkeypatch); fake_verify(monkeypatch)
     cli.main(["revoke"])
     assert "GitHub emails the token's owner" in capsys.readouterr().out
+
+
+def test_typo_command_is_an_error_not_clean(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["verfiy"]) == 2
+    out = capsys.readouterr()
+    assert "Clean" not in out.out and "did you mean `leakkill verify`" in out.err
+
+
+def test_missing_path_is_an_error(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["scan", "does-not-exist"]) == 2
+    assert "no such file or directory: does-not-exist" in capsys.readouterr().err

@@ -11,7 +11,7 @@
 Common options: --staged (pre-commit), --history (all commits), --exclude-tests, --json.
 Ignore a line with `leakkill:ignore`; ignore paths with globs in .leakkillignore.
 """
-import argparse, json, os, sys
+import argparse, difflib, json, os, sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -189,6 +189,16 @@ def parser():
     return p
 
 
+def check_paths(paths):
+    """A security tool must never report 'Clean.' for something it didn't scan (e.g. a typo'd command)."""
+    missing = [p for p in paths if not os.path.exists(p)]
+    for p in missing:
+        hint = difflib.get_close_matches(p, sorted(COMMANDS), n=1)
+        print(f"leakkill: no such file or directory: {p}" + (f" (did you mean `leakkill {hint[0]}`?)" if hint else ""),
+              file=sys.stderr)
+    return not missing
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] in LEGACY:
@@ -196,6 +206,8 @@ def main(argv=None):
     if not argv or (argv[0] not in COMMANDS and argv[0] not in ("-h", "--help", "--version")):
         argv.insert(0, "scan")
     args = parser().parse_args(argv)
+    if args.cmd in ("scan", "verify", "revoke", "report") and not check_paths(args.paths):
+        return 2
     if args.cmd == "guard":
         return guard_mod.guard(sys.stdin.read())
     if args.cmd == "install-hook":

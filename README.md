@@ -19,7 +19,7 @@ python secretscan.py --install-claude-hook   # guard Claude Code in this project
 ### AI agent guard (Claude Code hooks)
 After `--install-claude-hook`, secretscan blocks, before they happen:
 - prompts that contain a secret
-- the agent **reading** `.env`, `*.pem`, `id_rsa`, `.npmrc`, ... (Read tool or `cat .env` in Bash)
+- the agent **reading** `.env`, `*.pem`, `id_rsa`, `.npmrc`, ... (Read tool, or any Bash command naming such a file: `cat`, `grep`, `base64`, `python -c`, `cp` ...; `.env.example` is allowed)
 - the agent **writing** a hard-coded key into code or shell commands (it is told to use an env var instead)
 
 Writing to `.env` itself is allowed. Malformed hook input never breaks the agent (fails open).
@@ -34,3 +34,7 @@ Pattern + entropy based (no live-key verification yet); false positives possible
 Planned: provider-verified keys, auto-revoke/rotate, more agent integrations, allowlist file.
 
 Tests: `pip install pytest && pytest`.  License: MIT
+
+### Verified live
+The guard was exercised against a real Claude Code CLI session (`claude -p`): prompts containing keys, `Read .env`,
+`cat .env`, `grep . .env` and writing an AWS key into a file were all blocked by the hooks.

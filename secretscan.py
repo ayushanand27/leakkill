@@ -91,8 +91,12 @@ def scan_staged():
 
 SENSITIVE_FILE = re.compile(
     r"(?i)(^|[\\/])(\.env(\.[\w-]+)?|id_rsa|id_ed25519|credentials|\.npmrc|\.pypirc|[^\\/]*\.(pem|key|p12|pfx))$")
-READ_CMD = re.compile(r"(?i)\b(cat|type|less|more|head|tail|Get-Content|gc|bat)\b[^|;&]*"
-                      r"(\.env\b|id_rsa|id_ed25519|\.pem\b|\.pypirc|\.npmrc)")
+# Any shell command that names a secrets file is blocked (cat, grep, base64, python -c, cp ...),
+# except harmless metadata commands and template files like .env.example.
+SENSITIVE_MENTION = re.compile(
+    r"(?i)(?<![\w.-])(\.env(\.(?!example|sample|template|dist)[\w-]+)?|id_rsa|id_ed25519|\.pypirc|\.npmrc"
+    r"|[\w.-]*\.(pem|key|p12|pfx))(?![\w-]|\.\w)")
+SAFE_CMD = re.compile(r"^\s*(git\s+(add|status|check-ignore|rm|diff\s+--stat)|ls|touch|rm|mkdir|stat|test|chmod)\b")
 READ_TOOLS = {"Read", "NotebookRead"}
 
 def scan_history():
@@ -130,7 +134,7 @@ def guard_check(event):
         if tool in READ_TOOLS and SENSITIVE_FILE.search(path):
             reasons.append(f"reading {path} would put its secrets into the model context")
         cmd = ti.get("command", "") if tool == "Bash" else ""
-        if cmd and READ_CMD.search(cmd):
+        if cmd and SENSITIVE_MENTION.search(cmd) and not SAFE_CMD.match(cmd):
             reasons.append("shell command reads a secrets file into the model context")
         if not (path and SENSITIVE_FILE.search(path)):  # writing real secrets into .env is fine
             for text in _strings(ti):

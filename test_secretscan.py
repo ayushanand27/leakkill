@@ -43,3 +43,12 @@ def test_history_finds_deleted_secret(tmp_path):
         assert any(f[2] == "AWS access key" for f in scan_history())
     finally:
         os.chdir(cwd)
+
+def _bash(cmd): return guard_check(ev(hook_event_name="PreToolUse", tool_name="Bash", tool_input={"command": cmd}))
+def test_guard_bash_readers():
+    for c in ["grep . .env", "base64 .env", "sed -n p .env", "awk 1 .env", "cp .env /tmp/x",
+              "python3 -c \"print(open('.env').read())\"", "cat ~/.ssh/id_rsa", "cat certs/server.pem"]:
+        assert _bash(c), c
+def test_guard_bash_allows():
+    for c in ["ls -a .env", "git add .env.example", "cat .env.example", "echo hello", "cat environment.md"]:
+        assert not _bash(c), c

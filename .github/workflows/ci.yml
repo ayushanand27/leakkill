@@ -26,3 +26,26 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install build twine && python -m build && twine check dist/*
+  action:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Action fails on a leaky folder
+        id: leaky
+        uses: ./
+        continue-on-error: true
+        with: { path: tests/fixtures/leaky }
+      - name: Action passes on clean code
+        id: clean
+        uses: ./
+        with: { path: src }
+      - name: Check outcomes
+        shell: bash
+        run: |
+          test "${{ steps.leaky.outcome }}" = failure
+          test "${{ steps.leaky.outputs.found }}" = 1
+          test "${{ steps.clean.outputs.found }}" = 0

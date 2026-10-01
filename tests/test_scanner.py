@@ -56,3 +56,26 @@ def test_url_real_password_found_and_masked():
 def test_test_named_vars_and_hashes_ignored():
     assert not kinds('MASKED_TEST_SECRET2 = "2JgchWvM1tpxT2lfz9aydoXW9yT1DN3NdLiejYxOOlzzV4nhBbYqmqZYbAV3V5Bf"')
     assert not kinds("ADMIN_PASSWORD = 'pbkdf2_sha256$30000$Vo0VlMnkR4Bk$qEvtdyZRWTcOsCnI/oQ7fVOu1XAURIZYoOZ3iq8Dr4M='")
+
+NEW = {
+    "OpenRouter key": "sk-or-v1-" + "a" * 64,
+    "Hugging Face token": "hf_" + "A" * 34,
+    "Groq key": "gsk_" + "A" * 52,
+    "Replicate token": "r8_" + "A" * 37,
+    "Perplexity key": "pplx-" + "A" * 48,
+    "SendGrid key": "SG." + "A" * 22 + "." + "B" * 43,
+    "DigitalOcean token": "dop_v1_" + "a" * 64,
+    "Shopify token": "shpat_" + "a" * 32,
+    "PyPI token": "pypi-AgEIcHlwaS5vcmc" + "A" * 60,
+    "Docker Hub token": "dckr_pat_" + "A" * 27,
+    "Twilio API key": "SK" + "a" * 32,
+    "Postman key": "PMAK-" + "a" * 24 + "-" + "b" * 34,
+    "Linear key": "lin_api_" + "A" * 40,
+    "Azure storage key": "AccountKey=" + "A" * 86 + "==",
+    "Stripe key": "sk_test_" + "A" * 24,
+}
+def test_new_providers_detected_exactly():
+    for kind, token in NEW.items():
+        assert kinds(f'x = "{token}"') == [kind], (kind, kinds(f'x = "{token}"'))
+def test_openrouter_not_reported_as_openai():
+    assert "OpenAI API key" not in kinds(NEW["OpenRouter key"])

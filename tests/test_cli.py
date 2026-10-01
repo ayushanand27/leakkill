@@ -63,3 +63,10 @@ def test_leakkillignore(tmp_path, monkeypatch):
 def test_legacy_flags_still_work(tmp_path, monkeypatch):
     project(tmp_path, monkeypatch)
     assert cli.main([]) == 1 and cli.main(["--exclude-tests", "."]) == 1
+
+
+def test_scan_report_option_writes_report_in_same_run(tmp_path, monkeypatch):
+    project(tmp_path, monkeypatch); fake_verify(monkeypatch)
+    assert cli.main(["verify", "--report", "r.md"]) == 1
+    md = (tmp_path / "r.md").read_text(encoding="utf-8")
+    assert "**1 live**" in md and GH not in md

@@ -1,0 +1,64 @@
+name: leakkill
+description: Find leaked secrets (API keys, tokens, private keys) and fail the build. Optionally check which are live.
+author: ayushanand27
+branding:
+  icon: shield
+  color: red
+inputs:
+  path:
+    description: Files or directories to scan (space-separated).
+    default: "."
+  history:
+    description: "Scan every commit on every branch (use actions/checkout with fetch-depth: 0)."
+    default: "false"
+  exclude-tests:
+    description: Skip test_* files and tests/ directories.
+    default: "false"
+  verify:
+    description: >
+      Check each secret with the provider that issued it. The build then fails only if a secret is LIVE.
+      Secrets are only ever sent to their own provider.
+    default: "false"
+  summary:
+    description: Write the incident report to the job summary.
+    default: "true"
+outputs:
+  found:
+    description: Number of unique secrets found.
+    value: ${{ steps.scan.outputs.found }}
+runs:
+  using: composite
+  steps:
+    - name: Install leakkill
+      id: install
+      shell: bash
+      run: |
+        PY=$(command -v python3 || command -v python)
+        "$PY" -m venv "$RUNNER_TEMP/leakkill-venv"
+        BIN="$RUNNER_TEMP/leakkill-venv/bin"; [ -d "$BIN" ] || BIN="$RUNNER_TEMP/leakkill-venv/Scripts"
+        "$BIN/python" -m pip install -q --disable-pip-version-check "$GITHUB_ACTION_PATH"
+        echo "python=$BIN/python" >> "$GITHUB_OUTPUT"
+    - name: Scan for secrets
+      id: scan
+      shell: bash
+      env:
+        PY: ${{ steps.install.outputs.python }}
+        SCAN_PATH: ${{ inputs.path }}
+        HISTORY: ${{ inputs.history }}
+        EXCLUDE_TESTS: ${{ inputs.exclude-tests }}
+        VERIFY: ${{ inputs.verify }}
+        SUMMARY: ${{ inputs.summary }}
+      run: |
+        cmd=scan; [ "$VERIFY" = true ] && cmd=verify
+        args=()
+        [ "$HISTORY" = true ] && args+=(--history)
+        [ "$EXCLUDE_TESTS" = true ] && args+=(--exclude-tests)
+        [ "$SUMMARY" = true ] && args+=(--report "$GITHUB_STEP_SUMMARY")
+        set +e
+        # shellcheck disable=SC2086  # SCAN_PATH is intentionally split into several paths
+        "$PY" -m leakkill "$cmd" "${args[@]}" $SCAN_PATH | tee "$RUNNER_TEMP/leakkill.out"
+        rc=${PIPESTATUS[0]}
+        set -e
+        found=$(grep -oE '^[0-9]+ unique' "$RUNNER_TEMP/leakkill.out" | grep -oE '[0-9]+' || echo 0)
+        echo "found=$found" >> "$GITHUB_OUTPUT"
+        exit "$rc"

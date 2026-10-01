@@ -1,11 +1,11 @@
 """Find secrets in files, staged changes and git history. Never touches the network."""
-import fnmatch, math, os, re, subprocess
+import bisect, fnmatch, math, os, re, subprocess
 from dataclasses import dataclass
 
 # kind -> regex. Group 1 (if present) is the secret, otherwise the whole match.
 RULES = {
     "AWS access key":      re.compile(r"\b((?:AKIA|ASIA)[0-9A-Z]{16})\b"),
-    "AWS secret key":      re.compile(r"(?i)aws.{0,20}?(?:secret|sk).{0,20}?[\s:=\"']+([A-Za-z0-9/+=]{40})(?![A-Za-z0-9/+=])"),
+    "AWS secret key":      re.compile(r"(?i)aws.{0,20}?(?:secret|sk).{0,20}?(?:[^\S\n]|[:=\"'])+([A-Za-z0-9/+=]{40})(?![A-Za-z0-9/+=])"),
     "GitHub token":        re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{36,255}|github_pat_[A-Za-z0-9_]{22,255})\b"),
     "GitLab token":        re.compile(r"\b(glpat-[A-Za-z0-9_\-.]{20,})"),
     "Slack token":         re.compile(r"\b(xox[abposre]-[A-Za-z0-9-]{10,})"),
@@ -35,11 +35,36 @@ RULES = {
     "JWT":                 re.compile(r"\b(eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})"),
     "Credentials in URL":  re.compile(r"\b([a-z][a-z0-9+]*://[^\s:/@]+:[^\s:/@]{3,}@[^\s/\"']+)"),
 }
-# key = "value" where the key name looks sensitive and the value looks random.
-# Name parts are length-bounded so matching stays linear on huge (e.g. minified) lines.
-ASSIGN = re.compile(
-    r"""(?i)(?<![\w.-])[\w.-]{0,40}?(?:secret|token|passwd|password|api[_-]?key|private[_-]?key|auth)[\w.-]{0,40}
-        \s*[:=]\s*["']([^"'\s]{12,})["']""", re.X)
+# A rule's pattern only runs on text containing one of its keywords: a plain substring search, far cheaper
+# than a regex. Keywords with uppercase letters are matched case-sensitively, others against lowercased text.
+KEYWORDS = {
+    "AWS access key": ["AKIA", "ASIA"], "AWS secret key": ["aws"],
+    "GitHub token": ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"], "GitLab token": ["glpat-"],
+    "Slack token": ["xox"], "Slack webhook": ["hooks.slack.com"], "Discord webhook": ["discord"],
+    "Stripe key": ["k_live_", "k_test_"], "Anthropic API key": ["sk-ant-"], "OpenRouter key": ["sk-or-v1-"],
+    "OpenAI API key": ["sk-"], "Hugging Face token": ["hf_"], "Groq key": ["gsk_"], "Replicate token": ["r8_"],
+    "Perplexity key": ["pplx-"], "SendGrid key": ["SG."], "DigitalOcean token": ["dop_v1_", "doo_v1_"],
+    "Shopify token": ["shpat_", "shpca_", "shppa_", "shpss_"], "PyPI token": ["pypi-AgEIcHlwaS5vcmc"],
+    "Docker Hub token": ["dckr_pat_"], "Twilio API key": ["SK"], "Postman key": ["PMAK-"], "Linear key": ["lin_api_"],
+    "Azure storage key": ["accountkey="], "npm token": ["npm_"], "Telegram bot token": [":AA"],
+    "Google API key": ["AIza"], "Private key block": ["private key-----"], "JWT": ["eyJ"],
+    "Credentials in URL": ["://"],
+}
+ASSIGN_KEYWORDS = ["secret", "token", "passw", "api_key", "api-key", "apikey", "private_key", "private-key",
+                   "privatekey", "auth"]
+
+
+def _has_keyword(keywords, text, lower):
+    return any((k in text) if k != k.lower() else (k in lower) for k in keywords)
+
+
+# key = "value" where the key name looks sensitive and the value looks random. Found in two steps: a plain
+# substring search for each keyword, then this short pattern anchored right after it. Every part is bounded or
+# anchored, so matching stays linear even on huge (e.g. minified) lines.
+ASSIGN_TAIL = re.compile(r"""[\w.-]{0,40}[^\S\n]*[:=][^\S\n]*["']([^"'\s]{12,})["']""")
+ASSIGN_NAMES = ["secret", "token", "passwd", "password", "api_key", "api-key", "apikey", "private_key", "private-key",
+                "privatekey", "auth"]
+IDENT = re.compile(r"[\w.-]{1,40}$")
 PLACEHOLDER = re.compile(r"(?i)example|placeholder|changeme|your[_-]|xxx|<.*>|\$\{|\{\{|dummy|sample|test")
 SKIP_DIRS = {".git", "node_modules", "venv", ".venv", "__pycache__", "dist", "build", ".idea", ".tox", ".mypy_cache"}
 SKIP_EXT = {".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip", ".gz", ".exe", ".dll", ".so", ".woff", ".woff2",
@@ -90,31 +115,67 @@ def real_url_password(url):
         and not all(w.lower() in FAKE_PASSWORDS for w in words)
 
 
-def scan_line(line):
-    """Return [(kind, secret)] for one line."""
-    if "leakkill:ignore" in line:
-        return []
-    hits = []
-    for kind, rx in RULES.items():
-        for m in rx.finditer(line):
+def _assignments(text, lower):
+    """Yield (start, value, name) for `name = "value"` where name contains a sensitive word."""
+    found = {}
+    for kw in ASSIGN_NAMES:
+        i = lower.find(kw)
+        while i != -1:
+            m = ASSIGN_TAIL.match(text, i + len(kw))
+            if m and m.start(1) not in found:
+                before = IDENT.search(text, max(0, i - 40), i)
+                found[m.start(1)] = (i, m.group(1), (before.group(0) if before else "") + text[i:m.start(1)])
+            i = lower.find(kw, i + 1)
+    return [found[k] for k in sorted(found)]
+
+
+def _is_random_assignment(v, name):
+    return not (PLACEHOLDER.search(v) or TEST_NAME.search(name) or HASH_PREFIX.match(v) or entropy(v) < 3.5
+                or not re.search(r"\d", v) or not re.search(r"[A-Za-z]", v))  # real random secrets mix letters+digits
+
+
+def _scan(text):
+    """Return {line_number: [(kind, secret)]}.
+
+    Each pattern runs once over the whole text (fast, in C) instead of once per line; matches are then
+    mapped back to line numbers. Patterns never cross a newline, so results equal a per-line scan.
+    """
+    lower = text.lower()
+    rules = [(k, rx) for k, rx in RULES.items() if _has_keyword(KEYWORDS[k], text, lower)]
+    assign = _has_keyword(ASSIGN_KEYWORDS, text, lower)
+    if not rules and not assign:
+        return {}
+    starts = [0] + [m.end() for m in re.finditer("\n", text)]
+    raw = {}
+    for kind, rx in rules:
+        for m in rx.finditer(text):
             val = m.group(1) if rx.groups else m.group(0)
             if kind == "Credentials in URL" and not real_url_password(val):
                 continue
+            raw.setdefault(bisect.bisect_right(starts, m.start()), []).append((kind, val))
+    for pos, value, name in (_assignments(text, lower) if assign else ()):
+        if _is_random_assignment(value, name):
+            raw.setdefault(bisect.bisect_right(starts, pos), []).append(("High-entropy secret", value))
+    out = {}
+    for ln in sorted(raw):
+        end = starts[ln] if ln < len(starts) else len(text)
+        if "leakkill:ignore" in text[starts[ln - 1]:end]:
+            continue
+        hits = []
+        for kind, val in raw[ln]:  # rule order first, then position: a specific rule beats a generic one
             if not any(val in h[1] or h[1] in val for h in hits):
                 hits.append((kind, val))
-    for m in ASSIGN.finditer(line):
-        v, name = m.group(1), m.group(0)[:m.start(1) - m.start(0)]
-        if (PLACEHOLDER.search(v) or TEST_NAME.search(name) or HASH_PREFIX.match(v) or entropy(v) < 3.5
-                or not re.search(r"\d", v) or not re.search(r"[A-Za-z]", v)):  # real random secrets mix letters+digits
-            continue
-        if not any(v in h[1] or h[1] in v for h in hits):
-            hits.append(("High-entropy secret", v))
-    return hits
+        out[ln] = hits
+    return out
+
+
+def scan_line(line):
+    """Return [(kind, secret)] for one line."""
+    return _scan(line).get(1, [])
 
 
 def scan_text(text, path, commit=""):
-    return [Finding(path, i, kind, val, commit)
-            for i, line in enumerate(text.splitlines(), 1) for kind, val in scan_line(line)]
+    return [Finding(path, ln, kind, val, commit) for ln, hits in _scan(text).items() for kind, val in hits]
 
 
 def load_ignores(root="."):
@@ -161,18 +222,32 @@ def _git(*args):
 
 
 def _scan_diff(diff, commit_of_header=None):
+    """Scan the added lines of a diff, batched per file so each pattern runs once per file, not per line."""
     out, cur, commit, ln = [], "?", "", 0
-    for line in diff.splitlines():
+    added, numbers = [], []
+
+    def flush():
+        if added:
+            for i, hits in _scan("\n".join(added)).items():
+                out.extend(Finding(cur, numbers[i - 1], k, v, commit) for k, v in hits)
+            added.clear()
+            numbers.clear()
+
+    for line in diff.split("\n"):
         if commit_of_header and line.startswith("commit "):
+            flush()
             commit = line.split()[1]
         elif line.startswith("+++ "):
+            flush()
             cur = line[6:] if line.startswith("+++ b/") else line[4:]
         elif line.startswith("@@"):
             m = re.search(r"\+(\d+)", line)
             ln = int(m.group(1)) if m else 0
         elif line.startswith("+"):
-            out += [Finding(cur, ln, k, v, commit) for k, v in scan_line(line[1:])]
+            added.append(line[1:])
+            numbers.append(ln)
             ln += 1
+    flush()
     return out
 
 

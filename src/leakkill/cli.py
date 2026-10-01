@@ -1,15 +1,15 @@
-"""secretscan: find leaked secrets, check if they're live, revoke them, and guard AI coding agents.
+"""leakkill: find leaked secrets, check if they're live, revoke them, and guard AI coding agents.
 
-  secretscan [scan] [PATH ...]         find secrets (offline; exit 1 if any)
-  secretscan verify [PATH ...]         ...and check which are live and whose they are (exit 1 if any live)
-  secretscan revoke [PATH ...]         plan revocation of live secrets; add --yes to do it
-  secretscan report [PATH ...]         write an incident report with step-by-step cleanup
-  secretscan install-hook              block commits that contain secrets (git pre-commit)
-  secretscan install-claude-hook       stop Claude Code reading .env/keys or writing secrets
-  secretscan guard                     hook entry point (reads Claude Code hook JSON on stdin)
+  leakkill [scan] [PATH ...]         find secrets (offline; exit 1 if any)
+  leakkill verify [PATH ...]         ...and check which are live and whose they are (exit 1 if any live)
+  leakkill revoke [PATH ...]         plan revocation of live secrets; add --yes to do it
+  leakkill report [PATH ...]         write an incident report with step-by-step cleanup
+  leakkill install-hook              block commits that contain secrets (git pre-commit)
+  leakkill install-claude-hook       stop Claude Code reading .env/keys or writing secrets
+  leakkill guard                     hook entry point (reads Claude Code hook JSON on stdin)
 
 Common options: --staged (pre-commit), --history (all commits), --exclude-tests, --json.
-Ignore a line with `secretscan:ignore`; ignore paths with globs in .secretscanignore.
+Ignore a line with `leakkill:ignore`; ignore paths with globs in .leakkillignore.
 """
 import argparse, json, os, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -161,16 +161,16 @@ def parser():
     common.add_argument("--history", action="store_true", help="scan every commit on every branch")
     common.add_argument("--exclude-tests", action="store_true", help="skip test_* files and tests/ dirs")
     common.add_argument("--json", action="store_true", help="machine-readable output")
-    p = argparse.ArgumentParser(prog="secretscan", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--version", action="version", version=f"secretscan {__version__}")
+    p = argparse.ArgumentParser(prog="leakkill", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--version", action="version", version=f"leakkill {__version__}")
     sub = p.add_subparsers(dest="cmd")
     sub.add_parser("scan", parents=[common], help="find secrets (offline)")
     sub.add_parser("verify", parents=[common], help="find secrets and check which are live")
     r = sub.add_parser("revoke", parents=[common], help="revoke live secrets (dry run unless --yes)")
-    r.add_argument("--only", help="comma-separated ids from `secretscan verify`, e.g. 1,3")
+    r.add_argument("--only", help="comma-separated ids from `leakkill verify`, e.g. 1,3")
     r.add_argument("--yes", action="store_true", help="actually revoke")
     rp = sub.add_parser("report", parents=[common], help="write a Markdown incident report")
-    rp.add_argument("-o", "--output", default="secretscan-report.md")
+    rp.add_argument("-o", "--output", default="leakkill-report.md")
     rp.add_argument("--no-verify", action="store_true", help="don't contact providers")
     rp.add_argument("--replacements", metavar="FILE", help="also write a git filter-repo --replace-text file")
     for name in ("guard", "install-hook", "install-claude-hook"):

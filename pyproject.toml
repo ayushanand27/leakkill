@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "secretscan"
+name = "leakkill"
 dynamic = ["version"]
 description = "Find leaked secrets, check if they're live, revoke them in one command, and keep them out of AI coding agents"
 readme = "README.md"
@@ -19,15 +19,15 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ayushanand27/secretscan"
-Issues = "https://github.com/ayushanand27/secretscan/issues"
-Changelog = "https://github.com/ayushanand27/secretscan/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/ayushanand27/leakkill"
+Issues = "https://github.com/ayushanand27/leakkill/issues"
+Changelog = "https://github.com/ayushanand27/leakkill/blob/main/CHANGELOG.md"
 
 [project.scripts]
-secretscan = "secretscan.cli:main_cli"
+leakkill = "leakkill.cli:main_cli"
 
 [tool.setuptools.dynamic]
-version = { attr = "secretscan.__version__" }
+version = { attr = "leakkill.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

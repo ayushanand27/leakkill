@@ -1,7 +1,7 @@
 import http.server, json, threading
 from datetime import datetime, timezone
 import pytest
-from secretscan import aws, providers as P
+from leakkill import aws, providers as P
 
 GH = "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
 

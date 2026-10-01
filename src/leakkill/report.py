@@ -22,7 +22,7 @@ def _action(item):
     if item.result and item.result.status == DEAD:
         return "Already revoked/invalid. Still remove it from code and history."
     if p and p.revoke:
-        return f"`secretscan revoke --only {item.n} --yes` (automatic), or manually: {p.manual}"
+        return f"`leakkill revoke --only {item.n} --yes` (automatic), or manually: {p.manual}"
     return p.manual if p else "Rotate it with whoever issued it."
 
 
@@ -31,7 +31,7 @@ def render(items, target, verified=True):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     count = lambda s: sum(1 for i in items if i.result and i.result.status == s)
     lines = [
-        "# secretscan incident report", "",
+        "# leakkill incident report", "",
         f"Generated {now} · target `{target}` · **{len(items)} unique secret(s)**"
         + (f" · **{count(LIVE)} live**, {count(DEAD)} dead, {len(items) - count(LIVE) - count(DEAD)} not confirmed"
            if verified else " · not verified (run without --no-verify to check which are live)"),
@@ -68,9 +68,9 @@ def render(items, target, verified=True):
         lines += ["## Purge from git history (after revoking)", "",
                   "```sh",
                   "pip install git-filter-repo",
-                  "secretscan report --history --no-verify --replacements .secretscan-replacements.txt",
-                  "git filter-repo --replace-text .secretscan-replacements.txt",
-                  "rm .secretscan-replacements.txt",
+                  "leakkill report --history --no-verify --replacements .leakkill-replacements.txt",
+                  "git filter-repo --replace-text .leakkill-replacements.txt",
+                  "rm .leakkill-replacements.txt",
                   "git push --force --all && git push --force --tags",
                   "```", "",
                   "Rewriting history needs a force-push and every collaborator must re-clone. "

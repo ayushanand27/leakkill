@@ -2,17 +2,24 @@ name: Publish to PyPI
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:  # "Run workflow" button: releases the version in src/leakkill/__init__.py
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - name: Tag must match package version
+      - name: Read version (a pushed tag must match it)
+        id: version
         run: |
           v=$(python -c "import sys; sys.path.insert(0, 'src'); import leakkill; print(leakkill.__version__)")
-          test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != version $v"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "v$v" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME != version $v"; exit 1
+          fi
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
       - run: pip install -e . pytest && pytest -q
       - run: pip install build twine && python -m build && twine check dist/*
       - uses: actions/upload-artifact@v4
@@ -27,12 +34,12 @@ jobs:
         with: { name: dist, path: dist/ }
       - uses: pypa/gh-action-pypi-publish@release/v1
   github-release:
-    needs: pypi
+    needs: [build, pypi]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { name: dist, path: dist/ }
-      - run: gh release create "$GITHUB_REF_NAME" dist/* --title "leakkill $GITHUB_REF_NAME" --notes-file CHANGELOG.md
-        env: { GH_TOKEN: "${{ github.token }}" }
+      - run: gh release create "$TAG" dist/* --target "$GITHUB_SHA" --title "leakkill $TAG" --notes-file CHANGELOG.md
+        env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ needs.build.outputs.tag }}" }

@@ -79,3 +79,12 @@ def test_new_providers_detected_exactly():
         assert kinds(f'x = "{token}"') == [kind], (kind, kinds(f'x = "{token}"'))
 def test_openrouter_not_reported_as_openai():
     assert "OpenAI API key" not in kinds(NEW["OpenRouter key"])
+
+
+def test_huge_lines_scan_in_linear_time():
+    """Minified bundles can have megabyte-long lines; a backtracking regex must not stall the scan."""
+    import time
+    for line in ("secret" * 100_000, 'api_key="' * 60_000, "awssecret" * 60_000):
+        t = time.perf_counter()
+        scan_line(line)
+        assert time.perf_counter() - t < 3, line[:20]

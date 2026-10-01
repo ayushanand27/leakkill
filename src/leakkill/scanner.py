@@ -35,9 +35,10 @@ RULES = {
     "JWT":                 re.compile(r"\b(eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})"),
     "Credentials in URL":  re.compile(r"\b([a-z][a-z0-9+]*://[^\s:/@]+:[^\s:/@]{3,}@[^\s/\"']+)"),
 }
-# key = "value" where the key name looks sensitive and the value looks random
+# key = "value" where the key name looks sensitive and the value looks random.
+# Name parts are length-bounded so matching stays linear on huge (e.g. minified) lines.
 ASSIGN = re.compile(
-    r"""(?i)\b[\w.-]*(?:secret|token|passwd|password|api[_-]?key|private[_-]?key|auth)[\w.-]*\b
+    r"""(?i)(?<![\w.-])[\w.-]{0,40}?(?:secret|token|passwd|password|api[_-]?key|private[_-]?key|auth)[\w.-]{0,40}
         \s*[:=]\s*["']([^"'\s]{12,})["']""", re.X)
 PLACEHOLDER = re.compile(r"(?i)example|placeholder|changeme|your[_-]|xxx|<.*>|\$\{|\{\{|dummy|sample|test")
 SKIP_DIRS = {".git", "node_modules", "venv", ".venv", "__pycache__", "dist", "build", ".idea", ".tox", ".mypy_cache"}

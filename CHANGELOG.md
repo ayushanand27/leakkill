@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.2 (2026-10-02)
+
+- Fix: the high-entropy assignment rule could take quadratic time on very long lines (e.g. minified
+  bundles), stalling a scan or the Claude Code guard. Matching is now linear; regression-tested on
+  multi-megabyte lines.
+- The GitHub Action runs leakkill straight from its own source: nothing is downloaded from PyPI into
+  your CI.
+- CI and release tooling is installed from a hash-locked file (`requirements/ci.txt`), wheels only,
+  and packages are built without fetching unpinned build dependencies.
+- `install-hook` only adds the execute bit for the file owner.
+
 ## 0.4.1 (2026-10-02)
 
 - Fix: a mistyped command (e.g. `leakkill verfiy`) or a missing path was scanned as an empty path and

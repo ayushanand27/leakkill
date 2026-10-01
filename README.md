@@ -23,7 +23,7 @@ $ secretscan revoke --only 1 --yes
 ## Install
 
 ```sh
-pip install "git+https://github.com/ayushanand27/real_work_with_me#subdirectory=secretscan"
+pip install git+https://github.com/ayushanand27/secretscan
 ```
 
 Python 3.9+, no dependencies. The PyPI release (`pip install secretscan`) is coming soon.
@@ -133,9 +133,22 @@ hard guarantees.
 ## Use in CI (GitHub Actions)
 
 ```yaml
-- run: pip install "git+https://github.com/ayushanand27/real_work_with_me#subdirectory=secretscan"
+- run: pip install git+https://github.com/ayushanand27/secretscan
 - run: secretscan scan --exclude-tests .
 ```
+
+## Use with the pre-commit framework
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/ayushanand27/secretscan
+    rev: v0.3.0
+    hooks:
+      - id: secretscan
+```
+
+Or without the framework: `secretscan install-hook`.
 
 ## Suppressing false positives
 

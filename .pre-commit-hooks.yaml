@@ -1,0 +1,7 @@
+- id: secretscan
+  name: secretscan
+  description: Block commits that contain secrets (API keys, tokens, private keys, credentials in URLs).
+  entry: secretscan scan
+  language: python
+  types: [text]
+  require_serial: true

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from . import __version__, aws
 
 LIVE, DEAD, UNKNOWN, UNSUPPORTED = "LIVE", "DEAD", "UNKNOWN", "UNVERIFIABLE"
-UA = f"secretscan/{__version__} (+https://github.com/ayushanand27/real_work_with_me)"
+UA = f"secretscan/{__version__} (+https://github.com/ayushanand27/secretscan)"
 
 
 @dataclass

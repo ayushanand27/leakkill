@@ -11,7 +11,7 @@
 Common options: --staged (pre-commit), --history (all commits), --exclude-tests, --json.
 Ignore a line with `secretscan:ignore`; ignore paths with globs in .secretscanignore.
 """
-import argparse, json, sys
+import argparse, json, os, sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -146,7 +146,7 @@ def cmd_report(args):
     target = "git history" if args.history else "staged changes" if args.staged else " ".join(args.paths or ["."])
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(report.render(items, target, verified=not args.no_verify))
-    print(f"Report written to {args.output} ({len(items)} unique secret(s)).")
+    print(f"Report written to {os.path.abspath(args.output)} ({len(items)} unique secret(s)).")
     if args.replacements:
         report.write_replacements(items, args.replacements)
         print(f"Replacements for git filter-repo written to {args.replacements}. "

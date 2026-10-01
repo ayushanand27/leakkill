@@ -29,7 +29,7 @@ PLACEHOLDER = re.compile(r"(?i)example|placeholder|changeme|your[_-]|xxx|<.*>|\$
 SKIP_DIRS = {".git", "node_modules", "venv", ".venv", "__pycache__", "dist", "build", ".idea", ".tox", ".mypy_cache"}
 SKIP_EXT = {".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip", ".gz", ".exe", ".dll", ".so", ".woff", ".woff2",
             ".ico", ".lock", ".pyc", ".mp4", ".mp3", ".jar", ".class"}
-IGNORE_FILE = ".secretscanignore"
+IGNORE_FILE = ".leakkillignore"
 
 
 @dataclass
@@ -77,7 +77,7 @@ def real_url_password(url):
 
 def scan_line(line):
     """Return [(kind, secret)] for one line."""
-    if "secretscan:ignore" in line:
+    if "leakkill:ignore" in line:
         return []
     hits = []
     for kind, rx in RULES.items():

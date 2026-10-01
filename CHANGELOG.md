@@ -13,5 +13,5 @@ First public release.
 - `scan --history` finds secrets in every commit, including ones already deleted.
 - Claude Code guard: blocks prompts containing secrets, reads of `.env`/key files (Read tool or any
   shell command), and hard-coded secrets in generated code.
-- pre-commit framework hook and `secretscan install-hook`.
-- `.secretscanignore` and `secretscan:ignore` for false positives.
+- pre-commit framework hook and `leakkill install-hook`.
+- `.leakkillignore` and `leakkill:ignore` for false positives.

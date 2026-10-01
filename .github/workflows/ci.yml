@@ -18,7 +18,7 @@ jobs:
       - run: pip install -e . pytest
       - run: pytest -q
       - name: Scan this repo for secrets (dogfooding)
-        run: secretscan scan --exclude-tests .
+        run: leakkill scan --exclude-tests .
   build:
     runs-on: ubuntu-latest
     steps:

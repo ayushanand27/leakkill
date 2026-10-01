@@ -1,4 +1,4 @@
-from secretscan.guard import guard_check
+from leakkill.guard import guard_check
 
 def ev(**kw): return kw
 def _bash(cmd): return guard_check(ev(hook_event_name="PreToolUse", tool_name="Bash", tool_input={"command": cmd}))

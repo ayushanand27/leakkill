@@ -1,5 +1,5 @@
 import os, subprocess
-from secretscan.scanner import scan_text, scan_history, scan_line, group, ignored, mask
+from leakkill.scanner import scan_text, scan_history, scan_line, group, ignored, mask
 
 GH = "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
 def kinds(t): return [f.kind for f in scan_text(t, "x")]
@@ -20,7 +20,7 @@ def test_dburl():       assert "Credentials in URL" in kinds("postgres://admin:h
 def test_entropy():     assert kinds('api_key = "q8Zx3Lm9Vb2Nc7Rt5Yw1Hk4"')
 def test_placeholder(): assert not kinds('api_key = "your_api_key_here_please"')
 def test_low_entropy(): assert not kinds('password = "aaaaaaaaaaaaaaaa"')
-def test_ignore():      assert not kinds('k = "AKIAIOSFODNN7EXAMPLE"  # secretscan:ignore')
+def test_ignore():      assert not kinds('k = "AKIAIOSFODNN7EXAMPLE"  # leakkill:ignore')
 def test_no_double():   assert kinds(f'token = "{GH}"') == ["GitHub token"]
 def test_raw_kept_masked_shown():
     f = scan_text('k="AKIAIOSFODNN7EXAMPLE"', "x")[0]
@@ -44,7 +44,7 @@ def test_history_finds_deleted_secret(tmp_path):
     finally:
         os.chdir(cwd)
 def test_identifier_values_are_not_secrets():
-    assert not kinds('secretscan = "secretscan.cli:main_cli"')
+    assert not kinds('leakkill = "leakkill.cli:main_cli"')
     assert not kinds('auth_handler = "myapp.auth.handlers:login_view"')
 def test_url_placeholders_ignored():
     for u in ["http://user:pass@example.com", "redis://username:password@127.0.0.1:6379",

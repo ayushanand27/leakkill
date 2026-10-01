@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from . import __version__, aws
 
 LIVE, DEAD, UNKNOWN, UNSUPPORTED = "LIVE", "DEAD", "UNKNOWN", "UNVERIFIABLE"
-UA = f"secretscan/{__version__} (+https://github.com/ayushanand27/secretscan)"
+UA = f"leakkill/{__version__} (+https://github.com/ayushanand27/leakkill)"
 
 
 @dataclass
@@ -76,7 +76,7 @@ def github_revoke(s, res):
 
 # ---------------------------------------------------------------- GitLab
 def _gitlab():
-    return os.environ.get("SECRETSCAN_GITLAB_URL", "https://gitlab.com").rstrip("/")
+    return os.environ.get("LEAKKILL_GITLAB_URL", "https://gitlab.com").rstrip("/")
 
 
 def gitlab_verify(s, ctx):

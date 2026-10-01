@@ -1,5 +1,5 @@
 import json
-from secretscan import cli, providers as P
+from leakkill import cli, providers as P
 
 GH = "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
 
@@ -49,14 +49,14 @@ def test_revoke_skips_dead_keys(tmp_path, monkeypatch, capsys):
 def test_report(tmp_path, monkeypatch):
     project(tmp_path, monkeypatch); fake_verify(monkeypatch)
     cli.main(["report", "--replacements", "repl.txt"])
-    md = (tmp_path / "secretscan-report.md").read_text(encoding="utf-8")
-    assert "**1 live**" in md and "octocat" in md and "secretscan revoke --only 1 --yes" in md and GH not in md
+    md = (tmp_path / "leakkill-report.md").read_text(encoding="utf-8")
+    assert "**1 live**" in md and "octocat" in md and "leakkill revoke --only 1 --yes" in md and GH not in md
     assert f"{GH}==>***REMOVED-GITHUB-TOKEN***" in (tmp_path / "repl.txt").read_text()
 
 
-def test_secretscanignore(tmp_path, monkeypatch):
+def test_leakkillignore(tmp_path, monkeypatch):
     project(tmp_path, monkeypatch)
-    (tmp_path / ".secretscanignore").write_text("app.py\n")
+    (tmp_path / ".leakkillignore").write_text("app.py\n")
     assert cli.main(["scan"]) == 0
 
 

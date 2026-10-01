@@ -54,13 +54,13 @@ def guard(raw):
         return 0  # never break the agent on malformed input
     reasons = guard_check(event)
     if reasons:
-        print("secretscan blocked this action:\n- " + "\n- ".join(dict.fromkeys(reasons)), file=sys.stderr)
+        print("leakkill blocked this action:\n- " + "\n- ".join(dict.fromkeys(reasons)), file=sys.stderr)
         return 2  # Claude Code: exit 2 = block, stderr is shown to the model
     return 0
 
 
 def _self_cmd(sub):
-    return f'"{sys.executable}" -m secretscan {sub}'
+    return f'"{sys.executable}" -m leakkill {sub}'
 
 
 def install_claude_hook():
@@ -76,7 +76,7 @@ def install_claude_hook():
         entry = {"hooks": [{"type": "command", "command": cmd}]}
         if matcher:
             entry["matcher"] = matcher
-        groups = [g for g in hooks.get(event, []) if "secretscan" not in json.dumps(g)]
+        groups = [g for g in hooks.get(event, []) if "leakkill" not in json.dumps(g)]
         hooks[event] = groups + [entry]
     with open(path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
@@ -91,7 +91,7 @@ def install_git_hook():
     hook = os.path.join(".git", "hooks", "pre-commit")
     cmd = _self_cmd("scan --staged").replace("\\", "/")
     with open(hook, "w", newline="\n") as f:
-        f.write(f'#!/bin/sh\n{cmd} || {{ echo "Commit blocked by secretscan."; exit 1; }}\n')
+        f.write(f'#!/bin/sh\n{cmd} || {{ echo "Commit blocked by leakkill."; exit 1; }}\n')
     os.chmod(hook, 0o755)
     print("Installed", hook)
     return 0

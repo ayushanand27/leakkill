@@ -1,17 +1,35 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "secretscan"
-version = "0.2.0"
-description = "Catch leaked secrets in code, git history, and AI coding agents before they escape"
+dynamic = ["version"]
+description = "Find leaked secrets, check if they're live, revoke them in one command, and keep them out of AI coding agents"
 readme = "README.md"
-license = { text = "MIT" }
-requires-python = ">=3.8"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [{ name = "Ayush", email = "andymylove24@gmail.com" }]
+keywords = ["secrets", "security", "leak", "revoke", "pre-commit", "claude-code", "ai-agents", "devsecops"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Security",
+  "Environment :: Console",
+]
+
+[project.urls]
+Homepage = "https://github.com/ayushanand27/real_work_with_me/tree/main/secretscan"
 
 [project.scripts]
-secretscan = "secretscan:main_cli"
+secretscan = "secretscan.cli:main_cli"
 
-[tool.setuptools]
-py-modules = ["secretscan"]
+[tool.setuptools.dynamic]
+version = { attr = "secretscan.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

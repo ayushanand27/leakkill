@@ -19,7 +19,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ayushanand27/real_work_with_me/tree/main/secretscan"
+Homepage = "https://github.com/ayushanand27/secretscan"
+Issues = "https://github.com/ayushanand27/secretscan/issues"
+Changelog = "https://github.com/ayushanand27/secretscan/blob/main/CHANGELOG.md"
 
 [project.scripts]
 secretscan = "secretscan.cli:main_cli"

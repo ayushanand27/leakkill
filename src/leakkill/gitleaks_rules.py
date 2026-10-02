@@ -169,7 +169,7 @@ RULES = [{'id': '1password-secret-key',
           '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{32})(?:[\\x60\'"\\s;]|\\\\[nr]|$)'},
  {'id': 'atlassian-api-token',
   'kind': 'Atlassian API token',
-  'regex': '(?i)[\\w.-]{0,50}?(?:(?-i:ATLASSIAN|[Aa]tlassian)|(?-i:CONFLUENCE|[Cc]onfluence)|(?-i:JIRA|[Jj]ira))(?:[ '
+  'regex': '(?i)(?:(?-i:ATLASSIAN|[Aa]tlassian)|(?-i:CONFLUENCE|[Cc]onfluence)|(?-i:JIRA|[Jj]ira))(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{20}[a-f0-9]{4})(?:[\\x60\'"\\s;]|\\\\[nr]|$)|\\b(ATATT3[A-Za-z0-9_\\-=]{186})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['atlassian', 'confluence', 'jira', 'atatt3'],
   'entropy': 3.5,
@@ -253,7 +253,7 @@ RULES = [{'id': '1password-secret-key',
           '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{32})(?:[\\x60\'"\\s;]|\\\\[nr]|$)'},
  {'id': 'cisco-meraki-api-key',
   'kind': 'Cisco meraki API key',
-  'regex': '[\\w.-]{0,50}?(?i:[\\w.-]{0,50}?(?:(?-i:[Mm]eraki|MERAKI))(?:[ '
+  'regex': '(?i:(?:(?-i:[Mm]eraki|MERAKI))(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3})(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([0-9a-f]{40})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['meraki'],
   'entropy': 3,
@@ -315,7 +315,7 @@ RULES = [{'id': '1password-secret-key',
           '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{32})(?:[\\x60\'"\\s;]|\\\\[nr]|$)'},
  {'id': 'cohere-api-token',
   'kind': 'Cohere API token',
-  'regex': '[\\w.-]{0,50}?(?i:[\\w.-]{0,50}?(?:cohere|CO_API_KEY)(?:[ '
+  'regex': '(?i:(?:cohere|CO_API_KEY)(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3})(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-zA-Z0-9]{40})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['cohere', 'co_api_key'],
   'entropy': 4,
@@ -367,7 +367,7 @@ RULES = [{'id': '1password-secret-key',
           '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9=_\\-]{43})(?:[\\x60\'"\\s;]|\\\\[nr]|$)'},
  {'id': 'curl-auth-header',
   'kind': 'Curl auth header',
-  'regex': '\\bcurl\\b(?:.*?|.*?(?:[\\r\\n]{1,2}.*?){1,5})[ \\t\\n\\r](?:-H|--header)(?:=|[ '
+  'regex': '\\bcurl\\b[^\\r\\n]{0,300}?(?:[\\r\\n]{1,2}[^\\r\\n]{0,300}?){0,5}[ \\t\\n\\r](?:-H|--header)(?:=|[ '
            '\\t]{0,5})(?:"(?i:(?:Authorization:[ \\t]{0,5}(?:Basic[ '
            '\\t]([a-z0-9+/]{8,}={0,3})|(?:Bearer|(?:Api-)?Token)[ '
            '\\t]([\\w=~@.+/-]{8,})|([\\w=~@.+/-]{8,}))|(?:(?:X-(?:[a-z]+-)?)?(?:Api-?)?(?:Key|Token)):[ '
@@ -381,7 +381,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'curl-auth-user',
   'kind': 'Curl auth user',
-  'regex': '\\bcurl\\b(?:.*|.*(?:[\\r\\n]{1,2}.*){1,5})[ \\t\\n\\r](?:-u|--user)(?:=|[ '
+  'regex': '\\bcurl\\b[^\\r\\n]{0,300}?(?:[\\r\\n]{1,2}[^\\r\\n]{0,300}?){0,5}[ \\t\\n\\r](?:-u|--user)(?:=|[ '
            '\\t]{0,5})("(:[^"]{3,}|[^:"]{3,}:|[^:"]{3,}:[^"]{3,})"|\'([^:\']{3,}:[^\']{3,})\'|((?:"[^"]{3,}"|\'[^\']{3,}\'|[\\w$@.-]+):(?:"[^"]{3,}"|\'[^\']{3,}\'|[\\w${}@.-]+)))(?:\\s|\\Z)',
   'keywords': ['curl'],
   'entropy': 2,
@@ -557,7 +557,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'etsy-access-token',
   'kind': 'Etsy access token',
-  'regex': '(?i)[\\w.-]{0,50}?(?:(?-i:ETSY|[Ee]tsy))(?:[ '
+  'regex': '(?i)(?:(?-i:ETSY|[Ee]tsy))(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{24})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['etsy'],
   'entropy': 3,
@@ -1095,7 +1095,7 @@ RULES = [{'id': '1password-secret-key',
           '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-f0-9]{32})(?:[\\x60\'"\\s;]|\\\\[nr]|$)'},
  {'id': 'linkedin-client-id',
   'kind': 'Linkedin client ID',
-  'regex': '(?i)[\\w.-]{0,50}?(?:linked[_-]?in)(?:[ '
+  'regex': '(?i)(?:linked[_-]?in)(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{14})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['linkedin', 'linked_in', 'linked-in'],
   'entropy': 2,
@@ -1103,7 +1103,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'linkedin-client-secret',
   'kind': 'Linkedin client secret',
-  'regex': '(?i)[\\w.-]{0,50}?(?:linked[_-]?in)(?:[ '
+  'regex': '(?i)(?:linked[_-]?in)(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{16})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['linkedin', 'linked_in', 'linked-in'],
   'entropy': 2,
@@ -1133,7 +1133,7 @@ RULES = [{'id': '1password-secret-key',
           '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}((test|live)_pub_[a-f0-9]{31})(?:[\\x60\'"\\s;]|\\\\[nr]|$)'},
  {'id': 'mailchimp-api-key',
   'kind': 'Mailchimp API key',
-  'regex': '(?i)[\\w.-]{0,50}?(?:MailchimpSDK.initialize|mailchimp)(?:[ '
+  'regex': '(?i)(?:MailchimpSDK.initialize|mailchimp)(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-f0-9]{32}-us\\d\\d)(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['mailchimp'],
   'entropy': 0,
@@ -1203,7 +1203,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'messagebird-api-token',
   'kind': 'Messagebird API token',
-  'regex': '(?i)[\\w.-]{0,50}?(?:message[_-]?bird)(?:[ '
+  'regex': '(?i)(?:message[_-]?bird)(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{25})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['messagebird', 'message-bird', 'message_bird'],
   'entropy': 0,
@@ -1211,7 +1211,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'messagebird-client-id',
   'kind': 'Messagebird client ID',
-  'regex': '(?i)[\\w.-]{0,50}?(?:message[_-]?bird)(?:[ '
+  'regex': '(?i)(?:message[_-]?bird)(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['messagebird', 'message-bird', 'message_bird'],
   'entropy': 0,
@@ -1302,7 +1302,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': [{'regexes': ['33f!!lloppa', 'hal\\+9ooo_da!sY', '^\\%\\S.*\\%$'], 'paths': []}]},
  {'id': 'nytimes-access-token',
   'kind': 'Nytimes access token',
-  'regex': '(?i)[\\w.-]{0,50}?(?:nytimes|new-york-times,|newyorktimes)(?:[ '
+  'regex': '(?i)(?:nytimes|new-york-times,|newyorktimes)(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9=_\\-]{32})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['nytimes', 'new-york-times', 'newyorktimes'],
   'entropy': 0,
@@ -1317,7 +1317,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'okta-access-token',
   'kind': 'Okta access token',
-  'regex': '[\\w.-]{0,50}?(?i:[\\w.-]{0,50}?(?:(?-i:[Oo]kta|OKTA))(?:[ '
+  'regex': '(?i:(?:(?-i:[Oo]kta|OKTA))(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3})(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}(00[\\w=\\-]{40})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['okta'],
   'entropy': 4,
@@ -1421,7 +1421,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'privateai-api-token',
   'kind': 'Privateai API token',
-  'regex': '[\\w.-]{0,50}?(?i:[\\w.-]{0,50}?(?:private[_-]?ai)(?:[ '
+  'regex': '(?i:(?:private[_-]?ai)(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3})(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{32})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['privateai', 'private_ai', 'private-ai'],
   'entropy': 3,
@@ -1673,7 +1673,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'snyk-api-token',
   'kind': 'Snyk API token',
-  'regex': '(?i)[\\w.-]{0,50}?(?:snyk[_.-]?(?:(?:api|oauth)[_.-]?)?(?:key|token))(?:[ '
+  'regex': '(?i)(?:snyk[_.-]?(?:(?:api|oauth)[_.-]?)?(?:key|token))(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['snyk'],
   'entropy': 0,
@@ -1681,7 +1681,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'sonar-api-token',
   'kind': 'Sonar API token',
-  'regex': '(?i)[\\w.-]{0,50}?(?:sonar[_.-]?(login|token))(?:[ '
+  'regex': '(?i)(?:sonar[_.-]?(login|token))(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9=_\\-]{40})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['sonar'],
   'entropy': 0,
@@ -1721,7 +1721,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'sumologic-access-id',
   'kind': 'Sumologic access ID',
-  'regex': '[\\w.-]{0,50}?(?i:[\\w.-]{0,50}?(?:(?-i:[Ss]umo|SUMO))(?:[ '
+  'regex': '(?i:(?:(?-i:[Ss]umo|SUMO))(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3})(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}(su[a-zA-Z0-9]{12})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['sumo'],
   'entropy': 3,
@@ -1729,7 +1729,7 @@ RULES = [{'id': '1password-secret-key',
   'allow': []},
  {'id': 'sumologic-access-token',
   'kind': 'Sumologic access token',
-  'regex': '(?i)[\\w.-]{0,50}?(?:(?-i:[Ss]umo|SUMO))(?:[ '
+  'regex': '(?i)(?:(?-i:[Ss]umo|SUMO))(?:[ '
            '\\t\\w.-]{0,20})[\\s\'"]{0,3}(?:=|>|:{1,3}=|\\|\\||:|=>|\\?=|,)[\\x60\'"\\s=]{0,5}([a-z0-9]{64})(?:[\\x60\'"\\s;]|\\\\[nr]|$)',
   'keywords': ['sumo'],
   'entropy': 3,

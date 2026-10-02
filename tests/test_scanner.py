@@ -142,3 +142,7 @@ def test_assignment_noise_filtered():
     for line in ["author=self.author_1,", 'cls.author_book_auto_m2m_intermediate_id = author_book_intermediate.pk',
                  '"password1": "FORBIDDEN_VALUE2",', "token = get_token_from_env()", "authority: some.module.path_v2"]:
         assert not kinds(line), line
+
+
+def test_aligned_assignments_with_long_padding():
+    assert kinds('  master_password                          = "Nwrdef9mlacvihhwf"') == ["High-entropy secret"]

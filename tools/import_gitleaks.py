@@ -51,6 +51,29 @@ def translate(rx):
     return scope_inline_flags(rx.replace(r"\z", r"\Z"))
 
 
+# Go's RE2 engine runs any pattern in linear time; Python's backtracking engine does not. These rewrites keep
+# what a rule detects but remove the shapes that make Python backtrack catastrophically on hostile input.
+NAME_PREFIX = r"[\w.-]{0,50}?"
+CURL_SPANS = [r"(?:.*?|.*?(?:[\r\n]{1,2}.*?){1,5})", r"(?:.*|.*(?:[\r\n]{1,2}.*){1,5})"]
+CURL_SPAN_LINEAR = r"[^\r\n]{0,300}?(?:[\r\n]{1,2}[^\r\n]{0,300}?){0,5}"  # same idea: up to 5 more lines
+
+
+def harden(rx):
+    """Drop leading optional name prefixes (they can always match nothing, so which secret is found doesn't change;
+    stacked ones like `[\w.-]{0,50}?(?i:[\w.-]{0,50}?...` are quadratic in Python), and bound curl's multi-line
+    spans so each line split is forced instead of searched."""
+    changed = True
+    while changed:
+        changed = False
+        for lead in ("", "(?i:", "(?i)"):
+            if rx.startswith(lead + NAME_PREFIX):
+                rx = lead + rx[len(lead + NAME_PREFIX):]
+                changed = True
+    for span in CURL_SPANS:
+        rx = rx.replace(span, CURL_SPAN_LINEAR)
+    return rx
+
+
 def humanize(rule_id):
     fixes = {"api": "API", "aws": "AWS", "pat": "PAT", "jwt": "JWT", "id": "ID", "oauth": "OAuth", "url": "URL",
              "github": "GitHub", "gitlab": "GitLab", "gcp": "GCP", "sso": "SSO", "ssh": "SSH", "sdk": "SDK"}
@@ -94,6 +117,9 @@ def main():
             rule["names"] = [n.lower() for n in m.group(1).split("|")]
             rule["tail"] = "(?i)" + rx[m.end():]
             assert compiles(rule["tail"]), r["id"]
+        else:
+            rule["regex"] = harden(rx)
+            assert compiles(rule["regex"]), r["id"]
         rules.append(rule)
     g = cfg["allowlist"]
     allow_global = {"paths": [translate(x) for x in g.get("paths", [])],

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- AI agent guard for **Cursor, GitHub Copilot CLI and OpenAI Codex**, in addition to Claude Code:
+  `leakkill install-agent-hooks [claude|cursor|copilot|codex ...] [--global]`, and `leakkill guard --agent`.
+  Cursor also blocks reads of files whose content holds a key (respecting `.leakkillignore`); Codex
+  `apply_patch` edits are checked file by file, so writing keys into `.env` stays allowed.
+  `install-claude-hook` still works.
+
 ## 0.5.0 (2026-10-02)
 
 - 245 detection rules: leakkill's own 31 plus 214 provider rules imported from Gitleaks v8.28.0 (MIT,

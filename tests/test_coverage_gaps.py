@@ -20,7 +20,7 @@ def test_guard_allows_clean_and_ignores_non_events():
 
 
 def test_guard_fails_closed_on_internal_error(monkeypatch, capsys):
-    monkeypatch.setattr(guard, "guard_check", lambda ev: 1 / 0)
+    monkeypatch.setattr(guard, "guard_check", lambda ev, agent="claude": 1 / 0)
     assert guard.guard("{}") == 2
     assert "blocked this action to be safe" in capsys.readouterr().err
 

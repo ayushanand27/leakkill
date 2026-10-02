@@ -5,8 +5,11 @@
   leakkill revoke [PATH ...]         plan revocation of live secrets; add --yes to do it
   leakkill report [PATH ...]         write an incident report with step-by-step cleanup
   leakkill install-hook              block commits that contain secrets (git pre-commit)
-  leakkill install-claude-hook       stop Claude Code reading .env/keys or writing secrets
-  leakkill guard                     hook entry point (reads Claude Code hook JSON on stdin)
+  leakkill install-agent-hooks [AGENT ...] [--global]
+                                     stop AI agents (claude, cursor, copilot, codex) reading .env/keys,
+                                     sending secrets in prompts, or writing secrets into code
+  leakkill install-claude-hook       same as `install-agent-hooks claude`
+  leakkill guard [--agent AGENT]     hook entry point (reads the agent's hook JSON on stdin)
 
 Common options: --staged (pre-commit), --history (all commits), --exclude-tests, --json, --baseline FILE.
 scan/verify also take --report FILE, --sarif FILE and --write-baseline FILE.
@@ -19,7 +22,7 @@ from dataclasses import dataclass
 from . import __version__, baseline, guard as guard_mod, providers, report, sarif, scanner
 
 LEGACY = {"--guard": "guard", "--install-hook": "install-hook", "--install-claude-hook": "install-claude-hook"}
-COMMANDS = {"scan", "verify", "revoke", "report", "guard", "install-hook", "install-claude-hook"}
+COMMANDS = {"scan", "verify", "revoke", "report", "guard", "install-hook", "install-claude-hook", "install-agent-hooks"}
 
 
 @dataclass
@@ -204,7 +207,14 @@ def parser():
     rp.add_argument("-o", "--output", default="leakkill-report.md")
     rp.add_argument("--no-verify", action="store_true", help="don't contact providers")
     rp.add_argument("--replacements", metavar="FILE", help="also write a git filter-repo --replace-text file")
-    for name in ("guard", "install-hook", "install-claude-hook"):
+    g = sub.add_parser("guard", help="AI agent hook entry point (reads hook JSON on stdin)")
+    g.add_argument("--agent", choices=guard_mod.AGENTS, default="claude")
+    ia = sub.add_parser("install-agent-hooks", help="guard AI coding agents against secret leaks")
+    ia.add_argument("agents", nargs="*", metavar="AGENT",
+                    help="claude, cursor, copilot, codex (default: all)")
+    ia.add_argument("--global", dest="global_", action="store_true",
+                    help="install for your user account instead of this project")
+    for name in ("install-hook", "install-claude-hook"):
         sub.add_parser(name)
     return p
 
@@ -229,7 +239,13 @@ def main(argv=None):
     if args.cmd in ("scan", "verify", "revoke", "report") and not check_paths(args.paths):
         return 2
     if args.cmd == "guard":
-        return guard_mod.guard(sys.stdin.read())
+        return guard_mod.guard(sys.stdin.read(), args.agent)
+    if args.cmd == "install-agent-hooks":
+        bad = [a for a in args.agents if a not in guard_mod.AGENTS]
+        if bad:
+            print(f"leakkill: unknown agent {bad[0]!r} (choose from {', '.join(guard_mod.AGENTS)})", file=sys.stderr)
+            return 2
+        return guard_mod.install_agent_hooks(args.agents or guard_mod.AGENTS, user_level=args.global_)
     if args.cmd == "install-hook":
         return guard_mod.install_git_hook()
     if args.cmd == "install-claude-hook":

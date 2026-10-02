@@ -56,8 +56,10 @@ runs:
         [ "$HISTORY" = true ] && args+=(--history)
         [ "$EXCLUDE_TESTS" = true ] && args+=(--exclude-tests)
         [ "$SUMMARY" = true ] && args+=(--report "$GITHUB_STEP_SUMMARY")
-        args+=(--sarif "$RUNNER_TEMP/leakkill.sarif")
-        echo "sarif-file=$RUNNER_TEMP/leakkill.sarif" >> "$GITHUB_OUTPUT"
+        # a unique name per run, so calling the action twice in one job doesn't overwrite the first results
+        sarif="$RUNNER_TEMP/leakkill-${RANDOM}${RANDOM}-$$.sarif"
+        args+=(--sarif "$sarif")
+        echo "sarif-file=$sarif" >> "$GITHUB_OUTPUT"
         set +e
         # shellcheck disable=SC2086  # SCAN_PATH is intentionally split into several paths
         PYTHONPATH="$GITHUB_ACTION_PATH/src" "$PY" -m leakkill "$cmd" "${args[@]}" $SCAN_PATH | tee "$RUNNER_TEMP/leakkill.out"

@@ -107,3 +107,25 @@ def test_every_rule_has_prefilter_keywords_that_its_matches_contain():
     for kind in RULES:
         assert _has_keyword(KEYWORDS[kind], samples[kind], samples[kind].lower()), kind
         assert kind in kinds(samples[kind]), kind
+
+
+# ---- rules imported from Gitleaks ----
+def test_gitleaks_prefixed_rules_detected():
+    assert "Doppler API token" in kinds('DOPPLER = "dp.pt.' + "a1B2c3D4e5" * 4 + 'xyz"')
+    assert "Adobe client secret" in kinds('x = "p8e-' + "a1B2c3D4" * 4 + '"')
+
+
+def test_gitleaks_name_value_rules_use_two_phase_search():
+    assert "Linear client secret" in kinds('LINEAR_CLIENT_SECRET = "' + "0a1b2c3d4e5f6789" * 2 + '"')
+    assert "Linear client secret" not in kinds('LINEAR_CLIENT_SECRET = "' + "0" * 32 + '"')  # entropy too low
+
+
+def test_gitleaks_global_allowlist_paths_and_stopwords():
+    from leakkill.scanner import scan_text
+    line = 'DOPPLER = "dp.pt.' + "a1B2c3D4e5" * 4 + 'xyz"'
+    assert scan_text(line, "app/settings.py")
+    assert not [f for f in scan_text(line, "static/logo.svg") if f.kind == "Doppler API token"]  # image path
+
+
+def test_own_rules_win_over_imported_duplicates():
+    assert kinds("t=" + GH) == ["GitHub token"]  # not also reported as Gitleaks' "GitHub PAT"

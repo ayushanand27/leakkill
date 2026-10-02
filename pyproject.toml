@@ -8,6 +8,7 @@ dynamic = ["version"]
 description = "Find leaked secrets, check if they're live, revoke them in one command, and keep them out of AI coding agents"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.9"
 authors = [{ name = "Ayush", email = "andymylove24@gmail.com" }]
 keywords = ["secrets", "security", "leak", "revoke", "pre-commit", "claude-code", "ai-agents", "devsecops"]

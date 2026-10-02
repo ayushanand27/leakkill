@@ -1,0 +1,2 @@
+# Detection-rule data: contains the public example keys that Gitleaks allowlists (known fakes).
+src/leakkill/gitleaks_rules.py

@@ -342,6 +342,14 @@ PROVIDERS = {
 }
 
 
+FALLBACK = Provider(manual="Rotate it in that service's dashboard, then remove it from the code.")
+
+
+def provider(kind):
+    """The provider entry for a kind; imported (Gitleaks) kinds get generic rotation guidance."""
+    return PROVIDERS.get(kind, FALLBACK)
+
+
 def verify(kind, secret, ctx=None):
     p = PROVIDERS.get(kind)
     if not p or not p.verify:

@@ -62,7 +62,7 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 |---|---|---|---|---|---|
 | Price | **Free (MIT)** | Free (MIT) | Free (AGPL) | Free for individuals, roughly $15–30/dev/month for teams | Free on public repos, $19/committer/month on private |
 | Runs fully local | ✅ | ✅ | ✅ | ❌ SaaS | ❌ GitHub only |
-| Detectors | 31 | 150+ | 800+ | 550+ | [provider list](https://docs.github.com/en/code-security/secret-scanning/introduction/supported-secret-scanning-patterns) |
+| Detectors | 245 (31 leakkill + 214 imported from Gitleaks, credited) | 150+ | 800+ | 550+ | [provider list](https://docs.github.com/en/code-security/secret-scanning/introduction/supported-secret-scanning-patterns) |
 | Checks if a key is live | ✅ 17 providers | ❌ | ✅ (its main strength) | ✅ | ✅ some |
 | Revokes from the CLI | ✅ 6 providers | ❌ | ❌ (Enterprise) | partial | ❌ |
 | Incident report and history-purge steps | ✅ Markdown file | ❌ | ❌ | ✅ dashboard and playbooks | ❌ |
@@ -71,6 +71,28 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 
 Detector and pricing figures come from public sources in October 2026. Use what fits your needs:
 if breadth of detection matters most, run Gitleaks or TruffleHog alongside leakkill.
+
+### Detection rules
+
+leakkill's own 31 rules cover the providers it can verify and revoke. On top of those, it includes
+**214 provider rules from [Gitleaks](https://github.com/gitleaks/gitleaks)** (MIT), translated to Python by
+[`tools/import_gitleaks.py`](tools/import_gitleaks.py) from a pinned, checksum-verified release, together with
+Gitleaks' entropy thresholds and allowlists. Thank you to the Gitleaks maintainers. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+### Speed
+
+Measured on 4 cores (October 2026), wall-clock time for a full scan:
+
+| Repository | leakkill | Gitleaks 8.28 |
+|---|---|---|
+| psf/requests (130 files) | 0.36 s | 0.63 s |
+| pallets/flask (236 files) | 0.31 s | 0.64 s |
+| expressjs/express (214 files) | 0.23 s | 0.48 s |
+| pallets/flask full history (5,557 commits) | 2.0 s | 1.5 s |
+| django/django (7,000 files, 43 MB) | 2.8 s | 1.4 s |
+
+On typical repositories leakkill is faster; on very large ones Gitleaks (Go) is about 2x faster.
 
 ### Tested with real credentials
 
@@ -184,7 +206,8 @@ Or without the framework: `leakkill install-hook`.
 
 ## Known limitations
 
-- Fewer detectors than Gitleaks or TruffleHog.
+- Detection breadth is close to Gitleaks (whose rules it includes) but below TruffleHog (800+ detectors).
+- On very large repositories (tens of MB) scanning is about 2x slower than Gitleaks.
 - Verification behind a proxy that injects its own credentials (some corporate and sandbox proxies
   do) can report the proxy's identity. Run `verify` from a normal network.
 - AWS keys can only be verified when the secret key is found too (any file in the scan).

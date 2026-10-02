@@ -1,6 +1,9 @@
 """Find secrets in files, staged changes and git history. Never touches the network."""
 import bisect, fnmatch, math, os, re, subprocess
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+
+from . import gitleaks_rules
 
 # kind -> regex. Group 1 (if present) is the secret, otherwise the whole match.
 RULES = {
@@ -134,7 +137,61 @@ def _is_random_assignment(v, name):
                 or not re.search(r"\d", v) or not re.search(r"[A-Za-z]", v))  # real random secrets mix letters+digits
 
 
-def _scan(text):
+_GL = None
+
+
+def _gitleaks():
+    """Compile the imported Gitleaks rules on first use (keeps startup fast for the Claude Code guard)."""
+    global _GL
+    if _GL is None:
+        rules = []
+        for r in gitleaks_rules.RULES:
+            rules.append(dict(r, rx=re.compile(r["regex"]), tail_rx=re.compile(r["tail"]) if "tail" in r else None,
+                              path_rx=re.compile(r["path"]) if r["path"] else None,
+                              allow_c=[(a.get("regexTarget", "secret"), [re.compile(x) for x in a["regexes"]],
+                                        [re.compile(x) for x in a["paths"]], [w.lower() for w in a.get("stopwords", [])])
+                                       for a in r["allow"]]))
+        g = gitleaks_rules.ALLOW_GLOBAL
+        _GL = (rules, [re.compile(x) for x in g["paths"]], [re.compile(x) for x in g["regexes"]], g["stopwords"])
+    return _GL
+
+
+def _first_group(m):
+    return next((g for g in m.groups() if g), m.group(0))
+
+
+def _gitleaks_matches(rule, text, lower):
+    """Yield (start, secret, full_match) for one imported rule."""
+    if rule["tail_rx"] is None:
+        for m in rule["rx"].finditer(text):
+            yield m.start(), _first_group(m), m.group(0)
+        return
+    seen = set()
+    for name in rule["names"]:  # "<identifier containing name> = value": find the name, then anchor the rest
+        i = lower.find(name)
+        while i != -1:
+            m = rule["tail_rx"].match(text, i + len(name))
+            if m and m.start() not in seen:
+                seen.add(m.start())
+                yield i, _first_group(m), text[i:m.end()]
+            i = lower.find(name, i + 1)
+
+
+def _gitleaks_allowed(rule, secret, match, path, g_regexes, g_stopwords):
+    low = secret.lower()
+    if rule["entropy"] and entropy(secret) < rule["entropy"]:
+        return True
+    if any(rx.search(secret) for rx in g_regexes) or any(w in low for w in g_stopwords):
+        return True
+    for target, regexes, paths, stopwords in rule["allow_c"]:
+        t = match if target == "match" else secret
+        if any(rx.search(t) for rx in regexes) or (path and any(p.search(path) for p in paths)) \
+                or any(w in low for w in stopwords):
+            return True
+    return False
+
+
+def _scan(text, path=None):
     """Return {line_number: [(kind, secret)]}.
 
     Each pattern runs once over the whole text (fast, in C) instead of once per line; matches are then
@@ -143,7 +200,19 @@ def _scan(text):
     lower = text.lower()
     rules = [(k, rx) for k, rx in RULES.items() if _has_keyword(KEYWORDS[k], text, lower)]
     assign = _has_keyword(ASSIGN_KEYWORDS, text, lower)
-    if not rules and not assign:
+    gl_rules, g_paths, g_regexes, g_stopwords = _gitleaks()
+    if path and any(p.search(path.replace("\\", "/")) for p in g_paths):
+        gl_rules = []  # e.g. lockfiles and vendored assets, per Gitleaks' global allowlist
+    present = {}
+
+    def has(kw):
+        if kw not in present:
+            present[kw] = kw in lower
+        return present[kw]
+
+    gl_rules = [r for r in gl_rules if (not r["path_rx"] or (path and r["path_rx"].search(path)))
+                and any(has(k) for k in r["keywords"])]
+    if not rules and not assign and not gl_rules:
         return {}
     starts = [0] + [m.end() for m in re.finditer("\n", text)]
     raw = {}
@@ -153,6 +222,10 @@ def _scan(text):
             if kind == "Credentials in URL" and not real_url_password(val):
                 continue
             raw.setdefault(bisect.bisect_right(starts, m.start()), []).append((kind, val))
+    for rule in gl_rules:  # after leakkill's own rules, so verifiable kinds win when both match
+        for pos, secret, match in _gitleaks_matches(rule, text, lower):
+            if not _gitleaks_allowed(rule, secret, match, path, g_regexes, g_stopwords):
+                raw.setdefault(bisect.bisect_right(starts, pos), []).append((rule["kind"], secret))
     for pos, value, name in (_assignments(text, lower) if assign else ()):
         if _is_random_assignment(value, name):
             raw.setdefault(bisect.bisect_right(starts, pos), []).append(("High-entropy secret", value))
@@ -175,7 +248,7 @@ def scan_line(line):
 
 
 def scan_text(text, path, commit=""):
-    return [Finding(path, ln, kind, val, commit) for ln, hits in _scan(text).items() for kind, val in hits]
+    return [Finding(path, ln, kind, val, commit) for ln, hits in _scan(text, path).items() for kind, val in hits]
 
 
 def load_ignores(root="."):
@@ -203,17 +276,31 @@ def iter_files(paths):
                     yield os.path.join(root, f)
 
 
-def scan_paths(paths):
-    out = []
-    for f in iter_files(paths):
+def _scan_file(f):
+    try:
+        if os.path.getsize(f) > 2_000_000:
+            return []
+        with open(f, encoding="utf-8", errors="strict") as fh:
+            return scan_text(fh.read(), os.path.relpath(f))
+    except (UnicodeDecodeError, OSError):
+        return []  # binary / unreadable
+
+
+def _parallel(fn, items, jobs=None):
+    """map fn over items, across CPU cores when there are many items; results keep their order."""
+    jobs = jobs or int(os.environ.get("LEAKKILL_JOBS", 0)) or os.cpu_count() or 1
+    if jobs > 1 and len(items) >= 200:
         try:
-            if os.path.getsize(f) > 2_000_000:
-                continue
-            with open(f, encoding="utf-8", errors="strict") as fh:
-                out += scan_text(fh.read(), os.path.relpath(f))
-        except (UnicodeDecodeError, OSError):
-            continue  # binary / unreadable
-    return out
+            with ProcessPoolExecutor(jobs) as ex:
+                return [f for found in ex.map(fn, items, chunksize=32) for f in found]
+        except (OSError, RuntimeError, ImportError):
+            pass  # no multiprocessing here (some sandboxes): fall back to one process
+    return [f for item in items for f in fn(item)]
+
+
+def scan_paths(paths, jobs=None):
+    """Scan files, in parallel across CPU cores when there are many of them."""
+    return _parallel(_scan_file, list(iter_files(paths)), jobs)
 
 
 def _git(*args):
@@ -221,15 +308,20 @@ def _git(*args):
                           encoding="utf-8", errors="replace").stdout
 
 
-def _scan_diff(diff, commit_of_header=None):
-    """Scan the added lines of a diff, batched per file so each pattern runs once per file, not per line."""
-    out, cur, commit, ln = [], "?", "", 0
+def _scan_batch(batch):
+    path, commit, text, numbers = batch
+    return [Finding(path, numbers[i - 1], k, v, commit) for i, hits in _scan(text, path).items() for k, v in hits]
+
+
+def _scan_diff(diff, commit_of_header=None, jobs=None):
+    """Scan the added lines of a diff. Lines are batched per file and commit, so each pattern runs once per
+    batch, and batches are spread across CPU cores when there are many (e.g. a long --history)."""
+    batches, cur, commit, ln = [], "?", "", 0
     added, numbers = [], []
 
     def flush():
         if added:
-            for i, hits in _scan("\n".join(added)).items():
-                out.extend(Finding(cur, numbers[i - 1], k, v, commit) for k, v in hits)
+            batches.append((cur, commit, "\n".join(added), list(numbers)))
             added.clear()
             numbers.clear()
 
@@ -248,7 +340,7 @@ def _scan_diff(diff, commit_of_header=None):
             numbers.append(ln)
             ln += 1
     flush()
-    return out
+    return _parallel(_scan_batch, batches, jobs)
 
 
 def scan_staged():

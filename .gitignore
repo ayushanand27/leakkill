@@ -6,3 +6,4 @@ dist/
 build/
 leakkill-report.md
 .leakkill-replacements.txt
+.coverage

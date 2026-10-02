@@ -41,7 +41,7 @@ Python 3.9+, no dependencies. Latest development version:
 | `leakkill revoke` | Show what can be revoked. With `--yes`, revoke the live ones (`--only 1,3` to pick) | Only with `--yes` |
 | `leakkill report` | Write `leakkill-report.md`: every leak, its status and owner, and the cleanup steps in order | Same as `verify` (`--no-verify` to skip) |
 | `leakkill install-hook` | Git pre-commit hook that blocks commits containing secrets | Never |
-| `leakkill install-claude-hook` | Stop Claude Code reading `.env` and keys or writing secrets into code | Never |
+| `leakkill install-agent-hooks` | Stop AI coding agents (Claude Code, Cursor, GitHub Copilot, OpenAI Codex) reading `.env` and keys, sending secrets in prompts, or writing secrets into code | Never |
 
 Every scan command also accepts `--staged` (pre-commit), `--history` (every commit on every branch,
 including secrets you already "deleted"), `--exclude-tests` and `--json`.
@@ -70,7 +70,7 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 | Checks if a key is live | ✅ 17 providers | ✅ hundreds | ✅ | ❌ | ✅ 700+ | ✅ |
 | Revokes from the CLI | ✅ 6 providers | ✅ some providers | ❌ | ❌ | ❌ (Enterprise) | partial |
 | Remediation report with ordered steps + history purge | ✅ | HTML report, blast-radius map | ❌ | ❌ | ❌ | ✅ |
-| Guards AI coding agents (Claude Code) | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ (hooks, paid platform) |
+| Guards AI coding agents | ✅ Claude Code, Cursor, Copilot, Codex | ❌ | ❌ | ❌ | ❌ | ✅ (hooks, paid platform) |
 | Scans Slack / Jira / S3 / Docker | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | SARIF / baselines | ✅ / ✅ hashes only | ✅ / ✅ | ✅ / ✅ | ✅ / ✅ (stores secrets) | ✅ / ❌ | ✅ / ✅ |
 
@@ -139,7 +139,7 @@ express): 1 / 2 / 3 / 0.
 
 ### How it's tested
 
-- 108 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 92%).
+- 123 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
 - Property-based fuzz tests: the scanner never crashes on random input, never prints a raw secret, finds a
   planted token in any surrounding text, and gives the same answer scanning a whole file or line by line.
   (Fuzzing found two real bugs before release: a guard crash and a slow-input case, both fixed.)
@@ -171,20 +171,32 @@ rm .leakkill-replacements.txt
 git push --force --all && git push --force --tags  # every collaborator must re-clone
 ```
 
-## AI coding agent guard (Claude Code)
+## AI coding agent guard
 
-`leakkill install-claude-hook` adds hooks to `.claude/settings.json` that block:
+```sh
+leakkill install-agent-hooks                 # all four, in this project
+leakkill install-agent-hooks cursor codex    # just these
+leakkill install-agent-hooks --global        # for your user account, every project
+```
 
-- prompts that contain secrets (before they reach the model)
-- reading `.env`, `*.pem`, `id_rsa`, `.npmrc` and similar, whether through the Read tool or any
-  shell command that names such a file (`cat`, `grep`, `base64`, `python -c`, `cp` …).
-  `.env.example` is allowed.
-- writing hard-coded keys into code (writing them into `.env` is allowed)
+| Agent | Config written | Secret in a prompt | Reading `.env` / keys (file or shell) | Writing a key into code |
+|---|---|---|---|---|
+| Claude Code | `.claude/settings.json` | blocked | blocked | blocked |
+| Cursor | `.cursor/hooks.json` | blocked | blocked, and any file whose content holds a key | blocked |
+| GitHub Copilot CLI | `.github/hooks/leakkill.json` | warned only (Copilot ignores prompt-hook decisions) | blocked | blocked |
+| OpenAI Codex | `.codex/hooks.json` | blocked | blocked | blocked, per file of each `apply_patch` |
 
-This was tested live with the Claude Code CLI: prompts with keys, `Read .env`, `cat .env`,
-`grep . .env` and writing an AWS key into `app.py` were all blocked. The check is pattern-based: a
-command that builds the file name at runtime can get past it. Pair it with OS-level permissions for
-hard guarantees.
+Sensitive files are `.env` (but not `.env.example`), `*.pem`, `*.key`, `id_rsa`, `.npmrc`, `.pypirc` and
+similar; a shell command that names one (`cat`, `grep`, `base64`, `python -c`, `cp` …) is blocked too.
+Writing keys **into** `.env` is allowed, since that is where they belong. If the guard itself fails, it
+blocks rather than lets a secret through. Codex only runs hooks you trust: after installing, type
+`/hooks` in Codex and trust the leakkill hook.
+
+Tested live with the Claude Code CLI: prompts with keys, `Read .env`, `cat .env`, `grep . .env` and
+writing an AWS key into `app.py` were all blocked. Cursor, Copilot and Codex are tested against the hook
+formats in their documentation, through the same command they run; if you see one misbehave, please open
+an issue. The check is pattern-based: a command that builds the file name at runtime can get past it.
+Pair it with OS-level permissions for hard guarantees.
 
 ## Use in CI (GitHub Action)
 

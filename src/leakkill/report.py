@@ -61,8 +61,14 @@ def render(items, target, verified=True):
         lines += [head, "", f"1. **Revoke / rotate:** {_action(it)}"]
         if r and r.note:
             lines[-1] += f"  \n   _Check result: {r.note}_"
-        lines += [f"2. **Remove from code:** load it from an environment variable or secret manager instead "
-                  f"({', '.join('`' + f.location + '`' for f in it.findings[:3])}).", ""]
+        logs = [f for f in it.findings if f.path.endswith(".jsonl")]
+        if logs:  # an AI agent's session transcript / history (`leakkill --agents`)
+            lines += [f"2. **Delete the agent session file(s)** that hold it in plain text "
+                      f"({', '.join('`' + f.path + '`' for f in logs[:3])}). It was also sent to the model "
+                      "provider, which is why step 1 matters.", ""]
+        else:
+            lines += [f"2. **Remove from code:** load it from an environment variable or secret manager instead "
+                      f"({', '.join('`' + f.location + '`' for f in it.findings[:3])}).", ""]
 
     if any(in_git(i, tracked) for i in items):
         lines += ["## Purge from git history (after revoking)", "",

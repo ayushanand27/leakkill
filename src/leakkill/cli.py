@@ -11,7 +11,8 @@
   leakkill install-claude-hook       same as `install-agent-hooks claude`
   leakkill guard [--agent AGENT]     hook entry point (reads the agent's hook JSON on stdin)
 
-Common options: --staged (pre-commit), --history (all commits), --exclude-tests, --json, --baseline FILE.
+Common options: --staged (pre-commit), --history (all commits), --agents (AI agents' MCP configs, settings and
+session transcripts on this machine), --exclude-tests, --json, --baseline FILE.
 scan/verify also take --report FILE, --sarif FILE and --write-baseline FILE.
 Ignore a line with `leakkill:ignore`; ignore paths with globs in .leakkillignore.
 """
@@ -19,7 +20,7 @@ import argparse, difflib, json, os, sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-from . import __version__, baseline, guard as guard_mod, providers, report, sarif, scanner
+from . import __version__, agents, baseline, guard as guard_mod, providers, report, sarif, scanner
 
 LEGACY = {"--guard": "guard", "--install-hook": "install-hook", "--install-claude-hook": "install-claude-hook"}
 COMMANDS = {"scan", "verify", "revoke", "report", "guard", "install-hook", "install-claude-hook", "install-agent-hooks"}
@@ -35,7 +36,9 @@ class Item:
 
 
 def collect(args):
-    if args.history:
+    if args.agents:
+        found = agents.scan_agents()
+    elif args.history:
         found = scanner.scan_history()
     elif args.staged:
         found = scanner.scan_staged()
@@ -104,7 +107,7 @@ def summary(items):
 
 
 def _target(args):
-    return "git history" if args.history else "staged changes" if args.staged else " ".join(args.paths or ["."])
+    return "AI agent files" if args.agents else "git history" if args.history else "staged changes" if args.staged else " ".join(args.paths or ["."])
 
 
 def cmd_scan(args, verify=False):
@@ -121,6 +124,8 @@ def cmd_scan(args, verify=False):
     else:
         print_items(items)
         print(summary(items))
+        if args.agents and items:
+            print("\n" + agents.ADVICE)
     if args.report:
         with open(args.report, "w", encoding="utf-8") as f:
             f.write(report.render(items, _target(args), verified=verify))
@@ -188,6 +193,8 @@ def parser():
     common.add_argument("paths", nargs="*", help="files or directories (default: .)")
     common.add_argument("--staged", action="store_true", help="scan staged git changes")
     common.add_argument("--history", action="store_true", help="scan every commit on every branch")
+    common.add_argument("--agents", action="store_true",
+                        help="scan AI agents' files on this machine: MCP configs, settings, session transcripts")
     common.add_argument("--exclude-tests", action="store_true", help="skip test_* files and tests/ dirs")
     common.add_argument("--json", action="store_true", help="machine-readable output")
     common.add_argument("--baseline", metavar="FILE", help="ignore secrets listed in this baseline file")

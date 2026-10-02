@@ -106,6 +106,21 @@ def summary(items):
     return s + "."
 
 
+def next_step(items, args, verified):
+    """One line telling a newcomer what to run next (text output only)."""
+    if not items:
+        return ""
+    flags = "".join(f" --{f}" for f in ("agents", "history", "staged") if getattr(args, f, False))
+    if not verified:
+        return (f"Next: `leakkill verify{flags}` checks which still work and whose they are. "
+                "False alarm? Add `leakkill:ignore` to that line.")
+    live = sum(1 for i in items if i.result and i.result.status == providers.LIVE)
+    if live:
+        return (f"Next: `leakkill revoke{flags}` shows how to kill the {live} live key(s) (add --yes to do it); "
+                f"`leakkill report{flags}` writes the cleanup steps.")
+    return f"None are live, but still remove them from the code: `leakkill report{flags}` lists the steps."
+
+
 def _target(args):
     return "AI agent files" if args.agents else "git history" if args.history else "staged changes" if args.staged else " ".join(args.paths or ["."])
 
@@ -124,6 +139,9 @@ def cmd_scan(args, verify=False):
     else:
         print_items(items)
         print(summary(items))
+        hint = next_step(items, args, verify)
+        if hint:
+            print(hint)
         if args.agents and items:
             print("\n" + agents.ADVICE)
     if args.report:

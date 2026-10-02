@@ -26,6 +26,9 @@ outputs:
   found:
     description: Number of unique secrets found.
     value: ${{ steps.scan.outputs.found }}
+  sarif-file:
+    description: Path to a SARIF 2.1.0 file with the findings, for github/codeql-action/upload-sarif.
+    value: ${{ steps.scan.outputs.sarif-file }}
 runs:
   using: composite
   steps:
@@ -53,6 +56,8 @@ runs:
         [ "$HISTORY" = true ] && args+=(--history)
         [ "$EXCLUDE_TESTS" = true ] && args+=(--exclude-tests)
         [ "$SUMMARY" = true ] && args+=(--report "$GITHUB_STEP_SUMMARY")
+        args+=(--sarif "$RUNNER_TEMP/leakkill.sarif")
+        echo "sarif-file=$RUNNER_TEMP/leakkill.sarif" >> "$GITHUB_OUTPUT"
         set +e
         # shellcheck disable=SC2086  # SCAN_PATH is intentionally split into several paths
         PYTHONPATH="$GITHUB_ACTION_PATH/src" "$PY" -m leakkill "$cmd" "${args[@]}" $SCAN_PATH | tee "$RUNNER_TEMP/leakkill.out"

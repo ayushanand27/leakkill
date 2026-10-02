@@ -8,14 +8,15 @@
   leakkill install-claude-hook       stop Claude Code reading .env/keys or writing secrets
   leakkill guard                     hook entry point (reads Claude Code hook JSON on stdin)
 
-Common options: --staged (pre-commit), --history (all commits), --exclude-tests, --json.
+Common options: --staged (pre-commit), --history (all commits), --exclude-tests, --json, --baseline FILE.
+scan/verify also take --report FILE, --sarif FILE and --write-baseline FILE.
 Ignore a line with `leakkill:ignore`; ignore paths with globs in .leakkillignore.
 """
 import argparse, difflib, json, os, sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-from . import __version__, guard as guard_mod, providers, report, scanner
+from . import __version__, baseline, guard as guard_mod, providers, report, sarif, scanner
 
 LEGACY = {"--guard": "guard", "--install-hook": "install-hook", "--install-claude-hook": "install-claude-hook"}
 COMMANDS = {"scan", "verify", "revoke", "report", "guard", "install-hook", "install-claude-hook"}
@@ -41,7 +42,14 @@ def collect(args):
     found = [f for f in found if not scanner.ignored(f.path, ignores)]
     if args.exclude_tests:
         found = [f for f in found if not scanner.is_test_path(f.path)]
-    return [Item(n, k, s, fs) for n, (k, s, fs) in enumerate(scanner.group(found), 1)]
+    items = [Item(0, k, s, fs) for k, s, fs in scanner.group(found)]
+    if args.baseline:
+        items, suppressed = baseline.filter_new(items, args.baseline)
+        if suppressed:
+            print(f"({suppressed} known secret(s) suppressed by baseline {args.baseline})", file=sys.stderr)
+    for n, it in enumerate(items, 1):
+        it.n = n
+    return items
 
 
 def verify_all(items):
@@ -98,6 +106,11 @@ def _target(args):
 
 def cmd_scan(args, verify=False):
     items = collect(args)
+    if args.write_baseline:
+        n = baseline.write(items, args.write_baseline)
+        print(f"Baseline with {n} known secret(s) written to {args.write_baseline} (hashes only, no secrets). "
+              f"Use --baseline {args.write_baseline} to only report new ones.")
+        return 0
     if verify and items:
         verify_all(items)
     if args.json:
@@ -108,6 +121,9 @@ def cmd_scan(args, verify=False):
     if args.report:
         with open(args.report, "w", encoding="utf-8") as f:
             f.write(report.render(items, _target(args), verified=verify))
+    if args.sarif:
+        with open(args.sarif, "w", encoding="utf-8") as f:
+            f.write(sarif.render(items))
     if verify:
         return 1 if any(i.result.status == providers.LIVE for i in items) else 0
     return 1 if items else 0
@@ -171,12 +187,16 @@ def parser():
     common.add_argument("--history", action="store_true", help="scan every commit on every branch")
     common.add_argument("--exclude-tests", action="store_true", help="skip test_* files and tests/ dirs")
     common.add_argument("--json", action="store_true", help="machine-readable output")
+    common.add_argument("--baseline", metavar="FILE", help="ignore secrets listed in this baseline file")
     p = argparse.ArgumentParser(prog="leakkill", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--version", action="version", version=f"leakkill {__version__}")
     sub = p.add_subparsers(dest="cmd")
     for name, h in (("scan", "find secrets (offline)"), ("verify", "find secrets and check which are live")):
         sp = sub.add_parser(name, parents=[common], help=h)
         sp.add_argument("--report", metavar="FILE", help="also write the Markdown incident report to FILE")
+        sp.add_argument("--sarif", metavar="FILE", help="also write SARIF 2.1.0 (GitHub Security tab) to FILE")
+        sp.add_argument("--write-baseline", metavar="FILE",
+                        help="accept all current findings: write their hashes to FILE and exit 0")
     r = sub.add_parser("revoke", parents=[common], help="revoke live secrets (dry run unless --yes)")
     r.add_argument("--only", help="comma-separated ids from `leakkill verify`, e.g. 1,3")
     r.add_argument("--yes", action="store_true", help="actually revoke")

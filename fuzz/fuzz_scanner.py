@@ -23,9 +23,19 @@ def check_guard(raw, agent):
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         rc = guard.guard(raw, agent)
     assert rc in (0, 2), rc
-    for f in scanner.scan_text(raw, "event"):
-        if len(f.secret) > 12:
-            assert f.secret not in out.getvalue() + err.getvalue(), "the guard echoed a raw secret"
+    # Compare decoded text with decoded text: what the agent reads is the message, not its JSON escaping
+    # (a raw-JSON "secret" can be an artifact of escapes like \u007f that json.dumps reproduces).
+    shown = err.getvalue()
+    if out.getvalue().strip():
+        shown += "\n".join(str(v) for v in json.loads(out.getvalue()).values())
+    try:
+        event = json.loads(raw)
+    except ValueError:
+        event = raw
+    for text in [raw, *guard._strings(event)]:
+        for f in scanner.scan_text(text, "event"):
+            if len(f.secret) > 12 and "\\u" not in f.secret:
+                assert f.secret not in shown, "the guard echoed a raw secret"
 
 
 def TestOneInput(data):

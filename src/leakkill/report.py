@@ -2,7 +2,7 @@
 import os, subprocess
 from datetime import datetime, timezone
 
-from .providers import LIVE, DEAD, PROVIDERS
+from .providers import LIVE, DEAD, provider
 
 
 def tracked_files():
@@ -18,7 +18,7 @@ def in_git(item, tracked):
 
 
 def _action(item):
-    p = PROVIDERS.get(item.kind)
+    p = provider(item.kind)
     if item.result and item.result.status == DEAD:
         return "Already revoked/invalid. Still remove it from code and history."
     if p and p.revoke:

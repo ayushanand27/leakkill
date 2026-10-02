@@ -127,14 +127,14 @@ def cmd_revoke(args):
     if not live:
         print("\nNo live secrets: nothing to revoke.")
         return 0
-    auto = [i for i in live if providers.PROVIDERS[i.kind].revoke]
+    auto = [i for i in live if providers.provider(i.kind).revoke]
     manual = [i for i in live if i not in auto]
     print(f"\n{len(live)} live secret(s): {len(auto)} can be revoked automatically, {len(manual)} need manual steps.")
     for i in manual:
-        print(f"  #{i.n} {i.kind}: {providers.PROVIDERS[i.kind].manual}")
+        print(f"  #{i.n} {i.kind}: {providers.provider(i.kind).manual}")
     for i in auto:
-        if providers.PROVIDERS[i.kind].side_effect:
-            print(f"  note for #{i.n} {i.kind}: {providers.PROVIDERS[i.kind].side_effect}")
+        if providers.provider(i.kind).side_effect:
+            print(f"  note for #{i.n} {i.kind}: {providers.provider(i.kind).side_effect}")
     if not args.yes:
         if auto:
             print(f"\nDry run. Re-run with --yes to revoke: " + ", ".join(f"#{i.n}" for i in auto))
@@ -145,7 +145,7 @@ def cmd_revoke(args):
         print(f"  #{i.n} {i.kind}: {'REVOKED' if ok else 'FAILED'} ({msg})")
         if not ok:
             failed += 1
-            print(f"      manual: {providers.PROVIDERS[i.kind].manual}")
+            print(f"      manual: {providers.provider(i.kind).manual}")
     return 1 if failed or manual else 0
 
 

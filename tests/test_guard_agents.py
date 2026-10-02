@@ -148,3 +148,15 @@ def test_cli_entry(monkeypatch, tmp_path, capsys):
     assert main(["install-agent-hooks", "nope"]) == 2
     assert main(["install-agent-hooks", "cursor"]) == 0 and os.path.exists(".cursor/hooks.json")
     assert not os.path.exists(".claude")
+
+
+def test_messages_never_repeat_a_secret_from_a_file_name(capsys):
+    # found by the ClusterFuzzLite fuzzer: the file name is quoted in the reason
+    name = "SK" + "EEEEEEEEEEEEEEEEE7777777EEEEEEEE.py"
+    rc, out, err = run({"hook_event_name": "beforeReadFile", "file_path": f"/w/{name}",
+                        "content": f'k = "{KEY}"'}, "cursor", capsys)
+    secret = name[:-3]
+    assert rc == 2 and secret not in out and secret not in err and KEY not in out + err
+    rc, out, err = run({"hook_event_name": "PreToolUse", "tool_name": "Read",
+                        "tool_input": {"file_path": f"/w/{secret}/.env"}}, "claude", capsys)
+    assert rc == 2 and secret not in err

@@ -1,4 +1,5 @@
-import http.server, json, threading
+import http.server, json, re, threading
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 import pytest
 from leakkill import aws, providers as P
@@ -70,7 +71,8 @@ def test_stripe_restricted_key_403_is_live(fake):
 
 def test_stripe_has_no_auto_revoke():
     ok, msg = P.revoke("Stripe key", "sk_live_x", P.Result(P.LIVE))
-    assert not ok and "dashboard.stripe.com" in msg
+    url = re.search(r"https://\S+", msg).group(0)
+    assert not ok and urlparse(url).hostname == "dashboard.stripe.com"
 
 def test_openai_quota_exceeded_counts_as_live(fake):
     fake({("GET", "https://api.openai.com/v1/models"): (429, {}, b"")})

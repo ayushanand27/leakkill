@@ -89,6 +89,12 @@ def compiles(rx):
         return False
 
 
+def defang(rx):
+    """Allowlisted example keys (e.g. Google's documented sample keys) are written as `AIz[a]...`: the same regex,
+    but no longer a literal key, so secret scanners (GitHub's included) don't report leakkill's source as a leak."""
+    return re.sub(r"\bAIza", "AIz[a]", rx)
+
+
 def main():
     import tomllib  # Python 3.11+, only needed to regenerate the rules (translation helpers work on 3.9)
 
@@ -105,7 +111,7 @@ def main():
         allow = [dict(a) for a in r.get("allowlists", [])]
         for a in allow:
             a.pop("description", None)
-            a["regexes"] = [translate(x) for x in a.get("regexes", [])]
+            a["regexes"] = [defang(translate(x)) for x in a.get("regexes", [])]
             a["paths"] = [translate(x) for x in a.get("paths", [])]
         if not compiles(rx) or not all(compiles(x) for a in allow for x in a["regexes"] + a["paths"]):
             failed.append(r["id"])

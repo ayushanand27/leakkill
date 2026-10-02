@@ -86,11 +86,11 @@ def render(items, target, verified=True):
 
 
 def write_replacements(items, path):
-    """git filter-repo --replace-text file. Contains raw secrets: local use only, delete after."""
-    with open(path, "w", encoding="utf-8") as f:
+    """git filter-repo --replace-text file. Contains raw secrets: local use only, delete after.
+    Created owner-only (0600) from the start, so the secrets are never readable by others, even briefly."""
+    if os.path.lexists(path):
+        os.remove(path)  # don't inherit an existing file's permissions (or follow a planted symlink)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
         for it in items:
             f.write(f"{it.secret}==>***REMOVED-{it.kind.upper().replace(' ', '-')}***\n")
-    try:
-        os.chmod(path, 0o600)
-    except OSError:
-        pass

@@ -42,11 +42,16 @@ jobs:
   github-release:
     needs: [build, pypi]
     runs-on: ubuntu-latest
-    permissions: { contents: write }
+    permissions: { contents: write, id-token: write }  # id-token: keyless Sigstore signing
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with: { name: dist, path: dist/ }
+      - name: Sign the release files (verify with `sigstore verify github`, see SECURITY.md)
+        uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9  # v3.5.0
+        with:
+          inputs: ./dist/*.tar.gz ./dist/*.whl
+          release-signing-artifacts: false  # attached below, together with the files they sign
       - run: gh release create "$TAG" dist/* --target "$GITHUB_SHA" --title "leakkill $TAG" --notes-file CHANGELOG.md
         env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ needs.build.outputs.tag }}" }
       - name: "Move the major tag (e.g. v0) so `uses: ayushanand27/leakkill@v0` gets this release"

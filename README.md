@@ -4,9 +4,10 @@
 
 **Leaked a key? Find it, see if it's live, and kill it in one command. Free, local, zero dependencies.**
 
-Free tools are great at *finding* secrets. What happens *after* a leak is usually left to paid
-platforms: is this key still working, whose account is it, how do I revoke it right now, and how do
-I clean it out of git history? leakkill does that part too, from your terminal, for free.
+Most secret scanners stop at *finding* secrets. leakkill also answers what comes next: is this key still
+working, whose account is it, how do I revoke it right now, and how do I clean it out of git history? It installs
+with a plain `pip install` (no dependencies), runs locally, and can stop AI coding agents from reading or writing
+secrets in the first place.
 
 ```console
 $ leakkill verify
@@ -60,20 +61,25 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 
 ## How it compares
 
-| | leakkill | Gitleaks | TruffleHog OSS | GitGuardian | GitHub Secret Protection |
-|---|---|---|---|---|---|
-| Price | **Free (MIT)** | Free (MIT) | Free (AGPL) | Free for individuals, roughly $15–30/dev/month for teams | Free on public repos, $19/committer/month on private |
-| Runs fully local | ✅ | ✅ | ✅ | ❌ SaaS | ❌ GitHub only |
-| Detectors | 245 (31 leakkill + 214 imported from Gitleaks, credited) | 150+ | 800+ | 550+ | [provider list](https://docs.github.com/en/code-security/secret-scanning/introduction/supported-secret-scanning-patterns) |
-| Checks if a key is live | ✅ 17 providers | ❌ | ✅ (its main strength) | ✅ | ✅ some |
-| Revokes from the CLI | ✅ 6 providers | ❌ | ❌ (Enterprise) | partial | ❌ |
-| Incident report and history-purge steps | ✅ Markdown file | ❌ | ❌ | ✅ dashboard and playbooks | ❌ |
-| Guards AI coding agents | ✅ Claude Code hooks | ❌ | ❌ | ❌ | ❌ |
-| SARIF / baselines | ✅ / ✅ hashes only | ✅ / ✅ (stores secrets) | ✅ / ❌ | ✅ / ✅ | built in |
-| Dependencies | none | Go binary | Go binary | CLI + account | GitHub |
+| | leakkill | Kingfisher | Betterleaks | Gitleaks | TruffleHog OSS | GitGuardian |
+|---|---|---|---|---|---|---|
+| License / price | MIT, free | Apache 2.0, free | MIT, free | MIT, free | AGPL, free | free for individuals, paid for teams |
+| Runs fully local | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ SaaS |
+| Install | `pip`, zero dependencies | Rust binary | Go binary | Go binary | Go binary | CLI + account |
+| Detection rules | 245 | ~485 | Gitleaks' + more | 150+ | 800+ | 550+ |
+| Checks if a key is live | ✅ 17 providers | ✅ hundreds | ✅ | ❌ | ✅ 700+ | ✅ |
+| Revokes from the CLI | ✅ 6 providers | ✅ some providers | ❌ | ❌ | ❌ (Enterprise) | partial |
+| Remediation report with ordered steps + history purge | ✅ | HTML report, blast-radius map | ❌ | ❌ | ❌ | ✅ |
+| Guards AI coding agents (Claude Code) | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ (hooks, paid platform) |
+| Scans Slack / Jira / S3 / Docker | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| SARIF / baselines | ✅ / ✅ hashes only | ✅ / ✅ | ✅ / ✅ | ✅ / ✅ (stores secrets) | ✅ / ❌ | ✅ / ✅ |
 
-Detector and pricing figures come from public sources in October 2026. Use what fits your needs:
-if breadth of detection matters most, run Gitleaks or TruffleHog alongside leakkill.
+**Where each is strongest** (accuracy below): Betterleaks finds the most real credentials; Kingfisher has the
+fewest false alarms and the broadest platform coverage with validation and revocation; TruffleHog verifies the
+most providers. leakkill's niche is a dependency-free `pip install` that goes from finding to revoked key to
+cleanup plan, guards AI coding agents, and is the best of these at passwords embedded in URLs.
+
+Figures from each project's documentation, October 2026. Use what fits: running two scanners is common.
 
 ### Detection rules
 
@@ -116,18 +122,20 @@ SendGrid, Telegram) are covered by tests using simulated API responses.
 
 ### Accuracy (independent dataset)
 
-On [Samsung CredData](https://github.com/Samsung/CredData), 67,896 lines labeled by people, scored by the
-same script for every tool ([details and how to reproduce](benchmarks/README.md)):
+On [Samsung CredData](https://github.com/Samsung/CredData), 67,896 lines labeled by people, every tool scored
+by the same script ([details and how to reproduce](benchmarks/README.md)):
 
-| | precision | recall | precision / recall without OpenSSL test vectors |
-|---|---|---|---|
-| **leakkill** | 0.834 | 0.251 | 0.893 / 0.217 |
-| Gitleaks 8.28 | 0.860 | 0.453 | 0.910 / 0.218 |
-| TruffleHog 3.97 (detection only) | 0.579 | 0.024 | 0.486 / 0.026 |
+| | precision | recall | F1 | without OpenSSL test vectors (P / R) | passwords in URLs |
+|---|---|---|---|---|---|
+| Betterleaks 1.9 | 0.712 | **0.562** | **0.628** | 0.585 / **0.379** | 96/209 |
+| Gitleaks 8.28 | 0.860 | 0.453 | 0.594 | 0.910 / 0.218 | 0/209 |
+| **leakkill 0.5** | 0.834 | 0.251 | 0.386 | 0.893 / 0.217 | **182/209** |
+| Kingfisher 2.9 (no validation) | **0.961** | 0.104 | 0.187 | 0.925 / 0.079 | 20/209 |
+| TruffleHog 3.97 (no verification) | 0.579 | 0.024 | 0.045 | 0.486 / 0.026 | 59/209 |
 
-On ordinary code leakkill matches Gitleaks; it finds 182/209 passwords in URLs (Gitleaks 0). Gitleaks' higher
-recall on the full set comes mostly from OpenSSL crypto test vectors that leakkill deliberately doesn't flag.
-False alarms on clean repositories (requests, flask, django, express): 1 / 2 / 3 / 0.
+leakkill is mid-pack: level with Gitleaks on real-world code, behind Betterleaks on recall, behind Kingfisher on
+precision, and well ahead on passwords in URLs. False alarms on clean repositories (requests, flask, django,
+express): 1 / 2 / 3 / 0.
 
 ### How it's tested
 
@@ -265,7 +273,9 @@ Or without the framework: `leakkill install-hook`.
 
 ## Known limitations
 
-- Detection breadth is close to Gitleaks (whose rules it includes) but below TruffleHog (800+ detectors).
+- Finds fewer real credentials than Betterleaks (recall 0.25 vs 0.56 on CredData), and has fewer rules than
+  Kingfisher or TruffleHog.
+- Scans files and git history only: not Slack, Jira, Confluence, S3 or Docker images.
 - On very large repositories (tens of MB) scanning is about 2x slower than Gitleaks.
 - Verification behind a proxy that injects its own credentials (some corporate and sandbox proxies
   do) can report the proxy's identity. Run `verify` from a normal network.

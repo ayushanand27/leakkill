@@ -2,7 +2,8 @@
 
     python benchmarks/creddata_eval.py CREDDATA_DIR TOOL FINDINGS_FILE
 
-FINDINGS_FILE is a tool's native JSON output (leakkill --json, gitleaks -f json, trufflehog --json).
+FINDINGS_FILE is a tool's native JSON output (leakkill --json, gitleaks/betterleaks -f json,
+trufflehog --json, kingfisher -f json --no-dedup).
 A finding is matched by file and line:
   - TP: the line holds a credential labeled real (T)
   - FP: the line is labeled not-a-credential (F or X, as CredData defines)
@@ -33,7 +34,10 @@ def findings(tool, file):
             for loc in item["locations"]:
                 path, line = loc.rsplit(":", 1)
                 yield norm(path), int(line)
-    elif tool == "gitleaks":
+    elif tool == "kingfisher":
+        for f in json.load(open(file))["findings"]:
+            yield norm(f["finding"]["path"]), int(f["finding"]["line"])
+    elif tool in ("gitleaks", "betterleaks"):  # Betterleaks keeps the Gitleaks report format
         for f in json.load(open(file)):
             yield norm(f["File"]), int(f["StartLine"])
     elif tool == "trufflehog":

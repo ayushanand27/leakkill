@@ -1,5 +1,5 @@
 """Find secrets in files, staged changes and git history. Never touches the network."""
-import bisect, fnmatch, math, os, re, subprocess
+import base64, bisect, fnmatch, math, os, re, subprocess
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 
@@ -37,6 +37,7 @@ RULES = {
     "Private key block":   re.compile(r"(-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP |ENCRYPTED )?PRIVATE KEY-----)"),
     "JWT":                 re.compile(r"\b(eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})"),
     "Credentials in URL":  re.compile(r"\b([a-z][a-z0-9+]*://[^\s:/@]+:[^\s:/@]{3,}@[^\s/\"']+)"),
+    "Basic auth credentials": re.compile(r"\b(?i:basic)[^\S\n]{1,5}([A-Za-z0-9+/]{8,512}={0,2})(?![\w+/=])"),
 }
 # A rule's pattern only runs on text containing one of its keywords: a plain substring search, far cheaper
 # than a regex. Keywords with uppercase letters are matched case-sensitively, others against lowercased text.
@@ -51,11 +52,11 @@ KEYWORDS = {
     "Docker Hub token": ["dckr_pat_"], "Twilio API key": ["SK"], "Postman key": ["PMAK-"], "Linear key": ["lin_api_"],
     "Azure storage key": ["accountkey="], "npm token": ["npm_"], "Telegram bot token": [":AA"],
     "Google API key": ["AIza"], "Private key block": ["private key-----"], "JWT": ["eyJ"],
-    "Credentials in URL": ["://"],
+    "Credentials in URL": ["://"], "Basic auth credentials": ["basic"],
 }
 ASSIGN_KEYWORDS = ["secret", "token", "passw", "api_key", "api-key", "apikey", "private_key", "private-key",
                    "privatekey", "auth", "access_key", "access-key", "accesskey", "credential", "client_key",
-                   "client-key"]
+                   "client-key", "key"]
 
 
 def _has_keyword(keywords, text, lower):
@@ -73,7 +74,19 @@ ASSIGN_TAIL = re.compile(r"""[\w.-]{0,40}["']?[^\S\n]{0,100}(?:=>|[:=])[^\S\n]{0
 # `(?=(X))\1` is an atomic group: the value is taken greedily and never shortened again. Shortening could never
 # succeed anyway (a value's characters and its terminators are disjoint), but trying it made hostile input slow.
 ASSIGN_NAMES = ["secret", "token", "passwd", "password", "api_key", "api-key", "apikey", "private_key", "private-key",
-                "privatekey", "auth", "access_key", "access-key", "accesskey", "credential", "client_key", "client-key"]
+                "privatekey", "auth", "access_key", "access-key", "accesskey", "credential", "client_key", "client-key",
+                "key"]
+# A bare `key` name (`key = "..."`, `"Key": "..."`, `signing_key: ...`) counts only when the name ends in `key`
+# and isn't one of the many non-secret keys in code (a dict, sort or cache key, a public key, a keyboard key...).
+KEY_NOT_SECRET = re.compile(r"(?i)(?:public|pub|primary|foreign|sort|cache|partition|row|routing|object|bucket|idx|"
+                            r"index|lookup|dedup|idempoten|natural|schema|sequence|translation|i18n|label|react|"
+                            r"query|dict|hash|group|unique|item|entry|field|column|table|"
+                            r"license|registry|session|storage|s3|redis|state|config|setting|pref|name|type|event|"
+                            r"api|encrypted|wrapped|resource)[\w.-]*key$|(?:mon|don|tur|hoc|joc|whis|lac)key$")
+# ...and the value must look like a token: base64/hex/url-safe characters only (no `,:()|$` of struct tags,
+# ARNs, k8s labels or cache keys), 16+ characters with at least two digits.
+KEY_VALUE = re.compile(r"(?=(?:[^0-9]*[0-9]){2})(?!(?:[A-Z][a-z]{2,}|[0-9]+(?![0-9]))+$)[A-Za-z0-9+/=_-]{16,4096}")
+# (the negative lookahead drops PascalCase names like `Minus10Converter`)
 # Values shaped like code rather than secrets: `self.author_1`, `obj.pk`, `MY_CONSTANT_NAME`, `some_identifier`.
 CODE_LIKE = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+|[a-z0-9]+(?:_[a-z0-9]+)+|[A-Z0-9]+(?:_[A-Z0-9]+)+")
 IDENT = re.compile(r"[\w.-]{1,40}$")
@@ -120,11 +133,24 @@ HASH_PREFIX = re.compile(r"^(pbkdf2_|argon2|bcrypt|\$2[aby]?\$|\$argon2|\$6\$|sh
 TEST_NAME = re.compile(r"(?i)test|example|dummy|fake|mock|sample")
 
 
-def real_url_password(url):
-    pw = CRED_URL.match(url).group(2)
+def real_password(pw, context):
     words = [w for w in re.split(r"%[0-9a-fA-F]{2}|[^A-Za-z0-9]", pw) if w]
-    return bool(words) and not PLACEHOLDER.search(url) and not re.search(r"[{}$<>*]", pw) \
+    return bool(words) and not PLACEHOLDER.search(context) and not re.search(r"[{}$<>*]", pw) \
         and not all(w.lower() in FAKE_PASSWORDS for w in words)
+
+
+def real_url_password(url):
+    return real_password(CRED_URL.match(url).group(2), url)
+
+
+def real_basic_auth(b64):
+    """`Authorization: Basic <b64>` is only a leak if it decodes to a real-looking `user:password`."""
+    try:
+        decoded = base64.b64decode(b64 + "=" * (-len(b64) % 4), validate=True).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        return False
+    user, sep, pw = decoded.partition(":")
+    return bool(sep and user and pw) and decoded.isprintable() and real_password(pw, decoded)
 
 
 def _assignments(text, lower):
@@ -138,6 +164,8 @@ def _assignments(text, lower):
                 i = lower.find(kw, skip_until)
                 continue
             m = None if kw == "auth" and lower.startswith("or", i + 4) else ASSIGN_TAIL.match(text, i + len(kw))
+            if m and kw == "key" and not (_secret_key_name(text, i, m) and KEY_VALUE.fullmatch(m.group(1) or m.group(2))):
+                m = None
             if m:  # (`auth` inside `author` / `authority` is not a credential name)
                 g = 1 if m.group(1) is not None else 2
                 value = m.group(g)
@@ -147,6 +175,14 @@ def _assignments(text, lower):
                     found[m.start(g)] = (i, value, (before.group(0) if before else "") + text[i:m.start(g)])
             i = lower.find(kw, i + 1)
     return [found[k] for k in sorted(found)]
+
+
+def _secret_key_name(text, i, m):
+    """For the bare `key` keyword: the identifier must end right after `key` and not be a known non-secret key."""
+    if re.match(r"[\w.-]", text[i + 3:i + 4]):  # `keyboard`, `key_id`, `keys`: not a key name
+        return False
+    before = IDENT.search(text, max(0, i - 40), i)
+    return not KEY_NOT_SECRET.search((before.group(0) if before else "") + "key")
 
 
 def _is_random_assignment(v, name):
@@ -237,6 +273,8 @@ def _scan(text, path=None):
         for m in rx.finditer(text):
             val = m.group(1) if rx.groups else m.group(0)
             if kind == "Credentials in URL" and not real_url_password(val):
+                continue
+            if kind == "Basic auth credentials" and not real_basic_auth(val):
                 continue
             raw.setdefault(bisect.bisect_right(starts, m.start()), []).append((kind, val))
     for rule in gl_rules:  # after leakkill's own rules, so verifiable kinds win when both match

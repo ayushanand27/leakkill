@@ -338,6 +338,8 @@ PROVIDERS = {
     "JWT": Provider(None, None, "If it is long-lived, rotate the signing secret that issued it."),
     "Credentials in URL": Provider(None, None, "Change that password (database user: ALTER USER ... PASSWORD; proxy or "
                                                "service account: its admin console) and restrict network access to it."),
+    "Basic auth credentials": Provider(None, None, "The text after `Basic` is just base64 of user:password. Change "
+                                                   "that user's password in the service it logs in to."),
     "High-entropy secret": Provider(None, None, "Treat as compromised: rotate it with whoever issued it."),
 }
 

@@ -101,6 +101,7 @@ def test_every_rule_has_prefilter_keywords_that_its_matches_contain():
         "Telegram bot token": "123456789:AA" + "h" * 33, "Google API key": "AIza" + "A" * 35,
         "Private key block": "-----BEGIN RSA PRIVATE KEY-----", "JWT": "eyJ" + "a" * 12 + ".eyJ" + "b" * 12 + "." + "c" * 12,
         "Credentials in URL": "postgres://app:S3cr3tPw9@db.prod.internal",
+        "Basic auth credentials": "Authorization: Basic a3RnOmM4bmN6dS1uYm5qaHhwYQ==",
         "AWS secret key": 'aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"',
     })
     assert set(KEYWORDS) == set(RULES)
@@ -146,3 +147,40 @@ def test_assignment_noise_filtered():
 
 def test_aligned_assignments_with_long_padding():
     assert kinds('  master_password                          = "Nwrdef9mlacvihhwf"') == ["High-entropy secret"]
+
+
+def test_bare_key_name_found():
+    for line in ['key = "n6i8J78+g9zskGPj4Ne3q4j/zSlOT2LPGdTIjqM2eq2="', '"Key": "a0a6ec5031294eb05c6c009b73561ad9"',
+                 "signing_key: 'Qa8f9d7s6f5d4s3a2xZ'", "Key = Hx81Ld0Zq7Rt5Yw1Hk4"]:
+        assert kinds(line) == ["High-entropy secret"], line
+
+
+def test_bare_key_noise_filtered():
+    for line in ['sort_key = "a8f9d7s6f5d4s3a2x9"', 'keyboard = "a8f9d7s6f5d4s3a2x9"', 'publicKey = "MIIBIjANBgkqhkiG9w0BA"',
+                 'Value3 float64 `key:"value3,range=(1:5]"`', 'kms_key = "arn:aws:kms:us-east-1:123456789012:key/12"',
+                 '- key: kubernetes.io/e2e-az-name', 'String key = "xkcoding:user:1"', 'encrypted_key: "0DJjBXri_kBcC46IkU5_Jk9B"',
+                 '<c:Minus10Converter x:Key="Minus10Converter" />', 'monkey = "a8f9d7s6f5d4s3a2x9"', 'key_id = "a8f9d7s6f5d4s3a2x9"']:
+        assert not kinds(line), line
+
+
+def test_bare_key_value_check_is_linear():
+    import time
+    for value in ["1" * 4000 + "!", "Abc1" * 1000 + "!"]:
+        t = time.perf_counter()
+        kinds(f'key = "{value}"')
+        assert time.perf_counter() - t < 1, value[:8]
+
+
+def test_basic_auth_decoded_and_checked():
+    assert kinds('headers = {"Authorization": "Basic a3RnOmM4bmN6dS1uYm5qaHhwYQ=="}') == ["Basic auth credentials"]
+    for line in ["{'Authorization': 'Basic login_and_password_removed'}",  # not base64 of user:pass
+                 "Authorization: Basic dXNlcjpwYXNzd29yZA==",  # user:password, a placeholder
+                 "Authorization: Basic YWRtaW46JHtQQVNTV09SRH0=",  # admin:${PASSWORD}
+                 "basic authentication is supported", "Authorization: Basic aGVsbG8gd29ybGQ="]:  # no colon
+        assert not kinds(line), line
+
+
+def test_basic_auth_password_with_url_characters():
+    import base64
+    b64 = base64.b64encode(b"svc:p@ss/w0rd Zq81").decode()
+    assert kinds(f"Authorization: Basic {b64}") == ["Basic auth credentials"]

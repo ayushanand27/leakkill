@@ -15,7 +15,7 @@
   imported rules ignore placeholders and env var names (`YOUR_NEW_TOKEN`, `${PASSWORD}`).
 - Security: the agent guard no longer repeats a secret from a file name back to the agent (found by the new
   ClusterFuzzLite fuzzer); the `--replacements` file is created owner-only (0600) from the start instead of
-  being restricted after writing.
+  being restricted after writing, and never overwrites an existing file (so `--replacements ~/.bashrc` is refused).
 - Coverage-guided fuzzing (Atheris + ClusterFuzzLite) on pull requests and weekly; GitHub releases are
   Sigstore-signed; the CodeQL workflow has pinned actions and least-privilege permissions; Google's sample
   keys in the imported allowlist are written as `AIz[a]...` so GitHub secret scanning stops flagging them.

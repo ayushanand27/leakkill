@@ -182,7 +182,12 @@ def cmd_report(args):
         f.write(report.render(items, target, verified=not args.no_verify))
     print(f"Report written to {os.path.abspath(args.output)} ({len(items)} unique secret(s)).")
     if args.replacements:
-        report.write_replacements(items, args.replacements)
+        try:
+            report.write_replacements(items, args.replacements)
+        except FileExistsError:
+            print(f"leakkill: {args.replacements} already exists; not overwriting it. Delete it or pick a new name.",
+                  file=sys.stderr)
+            return 2
         print(f"Replacements for git filter-repo written to {args.replacements}. "
               "It contains the raw secrets: delete it when done and never commit it.")
     return 1 if items else 0

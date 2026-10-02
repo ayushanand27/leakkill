@@ -87,9 +87,9 @@ def render(items, target, verified=True):
 
 def write_replacements(items, path):
     """git filter-repo --replace-text file. Contains raw secrets: local use only, delete after.
-    Created owner-only (0600) from the start, so the secrets are never readable by others, even briefly."""
-    if os.path.lexists(path):
-        os.remove(path)  # don't inherit an existing file's permissions (or follow a planted symlink)
+    Created owner-only (0600) from the start, so the secrets are never readable by others, even briefly.
+    Never overwrites: an existing file (or a symlink) raises FileExistsError, so a mistyped or malicious path
+    such as ~/.bashrc can't be replaced with secrets."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         for it in items:

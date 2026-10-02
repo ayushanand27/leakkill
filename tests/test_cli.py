@@ -122,11 +122,12 @@ def test_baseline_suppresses_known_and_reports_new(tmp_path, monkeypatch, capsys
     assert "GitLab token" in out and "GitHub token" not in out
 
 
-def test_replacements_file_is_owner_only_and_replaced(tmp_path, monkeypatch):
+def test_replacements_file_is_owner_only_and_never_overwrites(tmp_path, monkeypatch, capsys):
     import os, stat, sys
     project(tmp_path, monkeypatch); fake_verify(monkeypatch)
-    (tmp_path / "repl.txt").write_text("old")
-    cli.main(["report", "--replacements", "repl.txt"])
-    assert "old" not in (tmp_path / "repl.txt").read_text()
+    assert cli.main(["report", "--replacements", "repl.txt"]) == 1
     if sys.platform != "win32":  # Windows has no POSIX mode bits
         assert stat.S_IMODE(os.stat(tmp_path / "repl.txt").st_mode) == 0o600
+    (tmp_path / "keep.txt").write_text("important")
+    assert cli.main(["report", "--replacements", "keep.txt"]) == 2
+    assert (tmp_path / "keep.txt").read_text() == "important" and "not overwriting" in capsys.readouterr().err

@@ -124,10 +124,12 @@ End to end on Windows with real, throwaway credentials:
 | Slack webhook | LIVE | (died with the app) | DEAD |
 | Stripe test key | LIVE, correct account, "test mode" | manual roll in dashboard | |
 | Hugging Face token | LIVE, correct user and token role | manual delete | |
+| Postman API key | LIVE, correct username | manual delete (page linked) | DEAD |
+| Netlify access token | LIVE, correct account email | manual delete (page linked) | |
 
 Against the real AWS, GitLab, Anthropic and npm APIs, invalid keys are correctly reported DEAD.
 Providers not yet tested with a live key (OpenAI, OpenRouter, Groq, Replicate, DigitalOcean,
-SendGrid, Telegram, and the 15 added in 0.7) are covered by tests using simulated API responses.
+SendGrid, Telegram, and the other 13 added in 0.7) are covered by tests using simulated API responses.
 
 ### Accuracy (independent dataset)
 

@@ -44,7 +44,8 @@ Python 3.9+, no dependencies. Latest development version:
 | `leakkill install-agent-hooks` | Stop AI coding agents (Claude Code, Cursor, GitHub Copilot, OpenAI Codex) reading `.env` and keys, sending secrets in prompts, or writing secrets into code | Never |
 
 Every scan command also accepts `--staged` (pre-commit), `--history` (every commit on every branch,
-including secrets you already "deleted"), `--exclude-tests` and `--json`.
+including secrets you already "deleted"), `--agents` (secrets your AI coding agents stored on this machine, see
+below), `--exclude-tests` and `--json`.
 
 ## What it can verify and revoke
 
@@ -127,7 +128,7 @@ by the same script ([details and how to reproduce](benchmarks/README.md)):
 
 | | precision | recall | F1 | without OpenSSL test vectors (P / R / F1) | passwords in URLs | HTTP Basic auth |
 |---|---|---|---|---|---|---|
-| **leakkill 0.6** | 0.824 | 0.510 | **0.630** | 0.919 / 0.300 / 0.452 | **182/209** | **601/601** |
+| **leakkill 0.6** | 0.824 | 0.510 | **0.630** | 0.920 / 0.300 / 0.452 | **182/209** | **601/601** |
 | Betterleaks 1.9 | 0.712 | **0.562** | 0.628 | 0.585 / **0.379** / **0.460** | 96/209 | 10/601 |
 | Gitleaks 8.28 | 0.860 | 0.453 | 0.594 | 0.910 / 0.218 / 0.351 | 0/209 | 0/601 |
 | Kingfisher 2.9 (no validation) | **0.961** | 0.104 | 0.187 | **0.925** / 0.079 / 0.145 | 20/209 | 5/601 |
@@ -135,14 +136,14 @@ by the same script ([details and how to reproduce](benchmarks/README.md)):
 
 Compare on the "without OpenSSL test vectors" column: those are public crypto test data, not leaks. There,
 leakkill and Betterleaks are level on F1. Betterleaks finds more credentials (recall 0.379 vs 0.300); leakkill
-raises far fewer false alarms (precision 0.919 vs 0.585). leakkill is far ahead on passwords in URLs and Basic
+raises far fewer false alarms (precision 0.920 vs 0.585). leakkill is far ahead on passwords in URLs and Basic
 auth headers, because it decodes and checks them. The generic rules were tuned on this dataset, which flatters
 leakkill somewhat; false alarms on four clean repositories (requests, flask, django, express) stayed at
 1 / 2 / 3 / 0.
 
 ### How it's tested
 
-- 128 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
+- 134 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
 - Property-based fuzz tests: the scanner never crashes on random input, never prints a raw secret, finds a
   planted token in any surrounding text, and gives the same answer scanning a whole file or line by line.
   (Fuzzing found two real bugs before release: a guard crash and a slow-input case, both fixed.)
@@ -200,6 +201,25 @@ writing an AWS key into `app.py` were all blocked. Cursor, Copilot and Codex are
 formats in their documentation, through the same command they run; if you see one misbehave, please open
 an issue. The check is pattern-based: a command that builds the file name at runtime can get past it.
 Pair it with OS-level permissions for hard guarantees.
+
+## Secrets your AI agents already stored
+
+```sh
+leakkill scan --agents      # what's there
+leakkill verify --agents    # ...and which of those keys still work
+```
+
+AI coding agents keep plain-text session transcripts and prompt histories, and MCP server configs often hold
+API keys. A key you pasted into a chat, or a `.env` the agent read, stays on disk there, and was sent to the
+model provider. `--agents` scans, on your machine only:
+
+- Claude Code (`~/.claude.json`, `~/.claude/` including session transcripts), Codex (`~/.codex/`), GitHub
+  Copilot CLI (`~/.copilot/`), Gemini CLI (`~/.gemini/`), Cursor, Windsurf, Claude Desktop and VS Code MCP configs
+- this project's `.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.claude/settings*.json`, `.gemini/settings.json`
+
+Transcripts are decoded, so a key behind JSON escapes is still found and reported at its line. The agents' own
+login files (`~/.codex/auth.json`, `~/.claude/.credentials.json`, Gemini's OAuth file) are skipped, since that is
+where their tokens belong. Cursor's chat history is stored in a database and is not scanned yet.
 
 ## Use in CI (GitHub Action)
 

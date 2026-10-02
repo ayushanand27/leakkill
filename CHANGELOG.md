@@ -7,7 +7,13 @@
   Cursor also blocks reads of files whose content holds a key (respecting `.leakkillignore`); Codex
   `apply_patch` edits are checked file by file, so writing keys into `.env` stays allowed.
   `install-claude-hook` still works.
-- Recall on real code up from 0.217 to 0.300 on Samsung CredData, with precision up from 0.893 to 0.919
+- `--agents` (scan, verify, report, revoke): find secrets that AI coding agents stored on this machine:
+  session transcripts and histories (Claude Code, Codex, Copilot CLI, Gemini CLI), and MCP configs (Cursor,
+  Windsurf, Claude Desktop, VS Code, project `.mcp.json`). JSONL transcripts are decoded, streamed in chunks and
+  reported by line; the agents' own login files are skipped.
+- Fewer false alarms from code: template values (`AKIA{R(16)}`), URLs and `filename=...` are not secrets, and
+  imported rules ignore placeholders and env var names (`YOUR_NEW_TOKEN`, `${PASSWORD}`).
+- Recall on real code up from 0.217 to 0.300 on Samsung CredData, with precision up from 0.893 to 0.920
   (OpenSSL test vectors excluded; full dataset: recall 0.251 to 0.510, F1 0.386 to 0.630):
   - HTTP Basic auth (`Authorization: Basic …`), reported only when it decodes to a real-looking
     `user:password` (601/601 in CredData, no new false positives).

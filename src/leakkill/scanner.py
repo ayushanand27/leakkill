@@ -185,8 +185,14 @@ def _secret_key_name(text, i, m):
     return not KEY_NOT_SECRET.search((before.group(0) if before else "") + "key")
 
 
+# Values that are code, not a secret: templates (`AKIA{R(16)}`), URLs, a nested `name=...` like `filename=x.whl`.
+# (Real secrets do contain `()[]<>=`, e.g. Django SECRET_KEYs, so those characters alone are not enough.)
+NOT_A_VALUE = re.compile(r"\{[A-Za-z_][\w(),]*\}|^[a-z][a-z0-9+.-]*://|^[a-z_]{4,}=")
+
+
 def _is_random_assignment(v, name):
     return not (PLACEHOLDER.search(v) or TEST_NAME.search(name) or HASH_PREFIX.match(v) or entropy(v) < 3.5
+                or NOT_A_VALUE.search(v)
                 or not re.search(r"\d", v) or not re.search(r"[A-Za-z]", v))  # real random secrets mix letters+digits
 
 
@@ -230,8 +236,14 @@ def _gitleaks_matches(rule, text, lower):
             i = lower.find(name, i + 1)
 
 
+# An imported rule matched a placeholder (`your_token`, `<TOKEN>`, `${TOKEN}`) or an env var name (`YOUR_NEW_TOKEN`).
+NOT_A_SECRET = re.compile(r"(?i)^(?:your|my)[_-]|placeholder|changeme|[<>]|\$\{|\{\{|^(?-i:[A-Z]+(?:_[A-Z0-9]+)+)$")
+
+
 def _gitleaks_allowed(rule, secret, match, path, g_regexes, g_stopwords):
     low = secret.lower()
+    if NOT_A_SECRET.search(secret):
+        return True
     if rule["entropy"] and entropy(secret) < rule["entropy"]:
         return True
     if any(rx.search(secret) for rx in g_regexes) or any(w in low for w in g_stopwords):

@@ -69,6 +69,7 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 | Revokes from the CLI | ✅ 6 providers | ❌ | ❌ (Enterprise) | partial | ❌ |
 | Incident report and history-purge steps | ✅ Markdown file | ❌ | ❌ | ✅ dashboard and playbooks | ❌ |
 | Guards AI coding agents | ✅ Claude Code hooks | ❌ | ❌ | ❌ | ❌ |
+| SARIF / baselines | ✅ / ✅ hashes only | ✅ / ✅ (stores secrets) | ✅ / ❌ | ✅ / ✅ | built in |
 | Dependencies | none | Go binary | Go binary | CLI + account | GitHub |
 
 Detector and pricing figures come from public sources in October 2026. Use what fits your needs:
@@ -127,6 +128,18 @@ same script for every tool ([details and how to reproduce](benchmarks/README.md)
 On ordinary code leakkill matches Gitleaks; it finds 182/209 passwords in URLs (Gitleaks 0). Gitleaks' higher
 recall on the full set comes mostly from OpenSSL crypto test vectors that leakkill deliberately doesn't flag.
 False alarms on clean repositories (requests, flask, django, express): 1 / 2 / 3 / 0.
+
+### How it's tested
+
+- 108 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 92%).
+- Property-based fuzz tests: the scanner never crashes on random input, never prints a raw secret, finds a
+  planted token in any surrounding text, and gives the same answer scanning a whole file or line by line.
+  (Fuzzing found two real bugs before release: a guard crash and a slow-input case, both fixed.)
+- Every one of the 245 rules is checked in CI against hostile input built from its own keywords, because
+  Python's regex engine, unlike Go's, can be made to backtrack for minutes. The sweep found and fixed 4
+  such rules among those imported from Gitleaks.
+- Live tests against real APIs with real throwaway keys (above), and of the Claude Code guard in the real CLI.
+- SonarCloud, OpenSSF Scorecard, pinned and hash-locked CI tooling, signed PyPI provenance.
 
 ## Safety model
 

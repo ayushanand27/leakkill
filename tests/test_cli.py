@@ -131,3 +131,13 @@ def test_replacements_file_is_owner_only_and_never_overwrites(tmp_path, monkeypa
     (tmp_path / "keep.txt").write_text("important")
     assert cli.main(["report", "--replacements", "keep.txt"]) == 2
     assert (tmp_path / "keep.txt").read_text() == "important" and "not overwriting" in capsys.readouterr().err
+
+
+def test_next_step_hints(tmp_path, monkeypatch, capsys):
+    project(tmp_path, monkeypatch); fake_verify(monkeypatch)
+    cli.main(["scan"])
+    assert "Next: `leakkill verify`" in capsys.readouterr().out
+    cli.main(["verify"])
+    assert "Next: `leakkill revoke`" in capsys.readouterr().out
+    cli.main(["scan", "--json"])
+    assert "Next:" not in capsys.readouterr().out  # machine output stays pure JSON

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1 (2026-10-02)
+
+- Friendlier output: after a scan, verify or `--agents` run, one line says what to do next (`leakkill verify`,
+  then `leakkill revoke` / `leakkill report`), keeping flags like `--agents`. JSON output is unchanged.
+- Postman and Netlify checks confirmed with real keys (LIVE, correct account, then DEAD after deletion).
+
 ## 0.7.0 (2026-10-02)
 
 - `verify` checks 15 more services, 32 in total: Postman, Linear, Notion, Sentry, Netlify, Doppler, Pulumi,

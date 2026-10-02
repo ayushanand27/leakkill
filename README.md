@@ -165,7 +165,7 @@ leakkill somewhat; false alarms on four clean repositories (requests, flask, dja
   `GetCallerIdentity` and so on.
 - `revoke` is a dry run unless you pass `--yes`, and only touches keys that verified as live.
 - Raw secrets are never printed or written to the report. The only exception is the opt-in
-  `report --replacements FILE` (needed by `git filter-repo`), which is created with permissions 600.
+  `report --replacements FILE` (needed by `git filter-repo`), which is created with permissions 600 and never overwrites an existing file.
 
 ## Cleaning git history
 

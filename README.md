@@ -181,7 +181,7 @@ hard guarantees.
 ## Use in CI (GitHub Action)
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v7
 - uses: ayushanand27/leakkill@v0
 ```
 
@@ -206,10 +206,10 @@ permissions:
   contents: read
   security-events: write   # needed to upload SARIF
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v7
   - uses: ayushanand27/leakkill@v0
     id: leakkill
-  - uses: github/codeql-action/upload-sarif@v3
+  - uses: github/codeql-action/upload-sarif@v4
     if: always()           # upload even when leakkill fails the build
     with:
       sarif_file: ${{ steps.leakkill.outputs.sarif-file }}
@@ -249,7 +249,7 @@ baseline doesn't make it safe: revoke real keys first.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/ayushanand27/leakkill
-    rev: v0.3.0
+    rev: v0.5.0
     hooks:
       - id: leakkill
 ```

@@ -74,7 +74,7 @@ def test_cli_agents(tmp_path, monkeypatch, capsys):
 
 def test_code_values_are_not_secrets():
     for line in ['token = "AKIA{R(16,U)}x9"', 'token = "https://api.digitalocean.com/v2/account"',
-                 'token = "filename=secretscan-0.3.0-0.editable-py3-none-any.whl"',
+                 'token = "filename=secretscan-0.3.0-0.editable-py3-none-any.whl"', 'token: base64/hex/url-safe2',
                  'curl -H "Authorization: Bearer YOUR_NEW_TOKEN" https://x', "curl -u user:${PASSWORD} https://x"]:
         assert not scan_line(line), line
     assert scan_line("SECRET_KEY = 'dyv8cxk7dv97*t=m&jeh;+1$9de=-#xje$xv^#@nrhqcb!^5rc@u*b'")  # Django keys: kept

@@ -185,9 +185,10 @@ def _secret_key_name(text, i, m):
     return not KEY_NOT_SECRET.search((before.group(0) if before else "") + "key")
 
 
-# Values that are code, not a secret: templates (`AKIA{R(16)}`), URLs, a nested `name=...` like `filename=x.whl`.
+# Values that are code, not a secret: templates (`AKIA{R(16)}`), URLs, a nested `name=...` like `filename=x.whl`,
+# lowercase paths like `base64/hex/url-safe` (random base64 with `/` has capitals).
 # (Real secrets do contain `()[]<>=`, e.g. Django SECRET_KEYs, so those characters alone are not enough.)
-NOT_A_VALUE = re.compile(r"\{[A-Za-z_][\w(),]*\}|^[a-z][a-z0-9+.-]*://|^[a-z_]{4,}=")
+NOT_A_VALUE = re.compile(r"\{[A-Za-z_][\w(),]*\}|^[a-z][a-z0-9+.-]*://|^[a-z_]{4,}=|^[a-z0-9_-]+(?:/[a-z0-9_-]+)+$")
 
 
 def _is_random_assignment(v, name):

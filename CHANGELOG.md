@@ -13,7 +13,7 @@
   reported by line; the agents' own login files are skipped.
 - Fewer false alarms from code: template values (`AKIA{R(16)}`), URLs and `filename=...` are not secrets, and
   imported rules ignore placeholders and env var names (`YOUR_NEW_TOKEN`, `${PASSWORD}`).
-- Recall on real code up from 0.217 to 0.300 on Samsung CredData, with precision up from 0.893 to 0.920
+- Recall on real code up from 0.217 to 0.300 on Samsung CredData, with precision up from 0.893 to 0.921
   (OpenSSL test vectors excluded; full dataset: recall 0.251 to 0.510, F1 0.386 to 0.630):
   - HTTP Basic auth (`Authorization: Basic …`), reported only when it decodes to a real-looking
     `user:password` (601/601 in CredData, no new false positives).

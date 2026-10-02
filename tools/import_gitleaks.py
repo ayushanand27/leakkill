@@ -5,7 +5,7 @@
 The source is pinned to a release and checked against a SHA-256, so the generated rules are reproducible.
 Go (RE2) regex syntax is translated to Python; rules that can't be translated are listed, never silently dropped.
 """
-import hashlib, pprint, re, sys, tomllib, urllib.request
+import hashlib, pprint, re, sys, urllib.request
 
 VERSION = "v8.28.0"
 URL = f"https://raw.githubusercontent.com/gitleaks/gitleaks/{VERSION}/config/gitleaks.toml"
@@ -67,6 +67,8 @@ def compiles(rx):
 
 
 def main():
+    import tomllib  # Python 3.11+, only needed to regenerate the rules (translation helpers work on 3.9)
+
     raw = urllib.request.urlopen(URL, timeout=60).read()
     got = hashlib.sha256(raw).hexdigest()
     if got != SHA256:

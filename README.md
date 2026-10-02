@@ -184,6 +184,50 @@ The build fails if a secret is found, and the incident report appears in the job
 The action exposes `found` (the number of unique secrets) as an output. Outside GitHub Actions, use
 `pip install leakkill && leakkill scan .`.
 
+### Findings in the GitHub Security tab (SARIF)
+
+```yaml
+permissions:
+  contents: read
+  security-events: write   # needed to upload SARIF
+steps:
+  - uses: actions/checkout@v4
+  - uses: ayushanand27/leakkill@v0
+    id: leakkill
+  - uses: github/codeql-action/upload-sarif@v3
+    if: always()           # upload even when leakkill fails the build
+    with:
+      sarif_file: ${{ steps.leakkill.outputs.sarif-file }}
+```
+
+Outside the Action: `leakkill scan --sarif results.sarif .` (validated against the OASIS SARIF 2.1.0 schema).
+The SARIF never contains secrets, only a masked prefix and a truncated hash.
+
+## GitLab CI
+
+```yaml
+leakkill:
+  image: python:3.12-slim
+  script:
+    - pip install leakkill
+    - leakkill scan --exclude-tests --sarif gl-leakkill.sarif .
+  artifacts:
+    when: always
+    paths: [gl-leakkill.sarif]
+```
+
+## Baselines: adopt it on a repo that already has old findings
+
+```sh
+leakkill scan --write-baseline .leakkill-baseline.json .   # accept what's there today
+leakkill scan --baseline .leakkill-baseline.json .          # from now on, fail only on new secrets
+```
+
+The baseline file is safe to commit: it holds only salted scrypt hashes, never secrets, and scrypt is
+deliberately slow so even weak passwords can't practically be brute-forced back out of it. (Gitleaks'
+baseline is its previous report, which includes the secrets themselves.) Accepting a finding into the
+baseline doesn't make it safe: revoke real keys first.
+
 ## Use with the pre-commit framework
 
 ```yaml

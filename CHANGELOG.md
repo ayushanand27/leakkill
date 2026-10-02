@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+- 245 detection rules: leakkill's own 31 plus 214 provider rules imported from Gitleaks v8.28.0 (MIT,
+  credited; see THIRD_PARTY_NOTICES.md) with their entropy thresholds and allowlists.
+- About 8x faster scanning (whole-file matching, keyword prefilter, all CPU cores). Faster than Gitleaks on
+  typical repositories; about 2x slower on very large ones.
+- `--sarif FILE`: SARIF 2.1.0 output for GitHub's Security tab (schema-validated); the Action exposes it as
+  the `sarif-file` output.
+- `--write-baseline` / `--baseline`: only fail on new secrets. Baselines hold salted scrypt hashes, never
+  secrets.
+- GitLab CI example.
+
 ## 0.4.2 (2026-10-02)
 
 - Fix: the high-entropy assignment rule could take quadratic time on very long lines (e.g. minified

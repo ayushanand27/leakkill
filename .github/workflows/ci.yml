@@ -63,3 +63,4 @@ jobs:
           test "${{ steps.leaky.outcome }}" = failure
           test "${{ steps.leaky.outputs.found }}" = 1
           test "${{ steps.clean.outputs.found }}" = 0
+          python -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['version']=='2.1.0' and d['runs'][0]['results']" "${{ steps.leaky.outputs.sarif-file }}"

@@ -89,3 +89,34 @@ def test_missing_path_is_an_error(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     assert cli.main(["scan", "does-not-exist"]) == 2
     assert "no such file or directory: does-not-exist" in capsys.readouterr().err
+
+
+def test_sarif_output_is_valid_shape_and_never_contains_the_secret(tmp_path, monkeypatch):
+    project(tmp_path, monkeypatch); fake_verify(monkeypatch)
+    assert cli.main(["verify", "--sarif", "out.sarif"]) == 1
+    raw = (tmp_path / "out.sarif").read_text(encoding="utf-8")
+    doc = json.loads(raw)
+    assert GH not in raw and "AKIAIOSFODNN7EXAMPLE" not in raw
+    run = doc["runs"][0]
+    assert doc["version"] == "2.1.0" and run["tool"]["driver"]["name"] == "leakkill"
+    rule_ids = [r["id"] for r in run["tool"]["driver"]["rules"]]
+    for res in run["results"]:
+        assert rule_ids[res["ruleIndex"]] == res["ruleId"]
+        assert res["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "app.py"
+        assert res["locations"][0]["physicalLocation"]["region"]["startLine"] >= 1
+        assert res["partialFingerprints"]["secretHash/v1"]
+    live = [r for r in run["results"] if r.get("properties", {}).get("status") == "LIVE"]
+    assert live and "revoke it first" in live[0]["message"]["text"]
+
+
+def test_baseline_suppresses_known_and_reports_new(tmp_path, monkeypatch, capsys):
+    project(tmp_path, monkeypatch)
+    assert cli.main(["scan", "--write-baseline", "bl.json"]) == 0
+    raw = (tmp_path / "bl.json").read_text()
+    assert GH not in raw and "AKIA" not in raw and json.loads(raw)["entries"]
+    assert cli.main(["scan", "--baseline", "bl.json"]) == 0  # nothing new
+    (tmp_path / "new.py").write_text('K = "glpat-' + "x1Y2z3A4b5C6d7E8f9G0" + '"\n')
+    capsys.readouterr()
+    assert cli.main(["scan", "--baseline", "bl.json"]) == 1
+    out = capsys.readouterr().out
+    assert "GitLab token" in out and "GitHub token" not in out

@@ -129,3 +129,16 @@ def test_gitleaks_global_allowlist_paths_and_stopwords():
 
 def test_own_rules_win_over_imported_duplicates():
     assert kinds("t=" + GH) == ["GitHub token"]  # not also reported as Gitleaks' "GitHub PAT"
+
+
+# ---- generic "name = value" rule (tuned on Samsung CredData, checked for noise on clean repos) ----
+SECRETISH = "zMfX-tPfSeLy0oziyqF3ul28"
+def test_assignment_forms_found():
+    for line in [f'client_secret = "{SECRETISH}"', f'"client_secret": "{SECRETISH}"', f"'secret' => '{SECRETISH}'",
+                 f"secret: {SECRETISH}", f"MINIO_ACCESS_KEY={SECRETISH}", f"  db_password: {SECRETISH}  # prod"]:
+        assert kinds(line) == ["High-entropy secret"], line
+
+def test_assignment_noise_filtered():
+    for line in ["author=self.author_1,", 'cls.author_book_auto_m2m_intermediate_id = author_book_intermediate.pk',
+                 '"password1": "FORBIDDEN_VALUE2",', "token = get_token_from_env()", "authority: some.module.path_v2"]:
+        assert not kinds(line), line

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 (unreleased)
+## 0.5.0 (2026-10-02)
 
 - 245 detection rules: leakkill's own 31 plus 214 provider rules imported from Gitleaks v8.28.0 (MIT,
   credited; see THIRD_PARTY_NOTICES.md) with their entropy thresholds and allowlists.
@@ -14,6 +14,10 @@
 - Generic `name = value` rule now also finds JSON/YAML/PHP-style keys (`"secret": "..."`, `'key' => '...'`),
   unquoted `.env`/YAML values, and `access_key` / `credential` / `client_key` names, while filtering code-like
   values (`self.attr`, `SNAKE_CASE`) and `author`/`authority`.
+- Robustness: every rule is linear-time on hostile input (4 imported Gitleaks rules were catastrophically
+  slow under Python's regex engine and are rewritten by the importer; a CI test sweeps all 245 rules).
+- Property-based fuzz tests; branch coverage 92% with an 88% CI gate.
+- Claude Code guard normalizes unexpected input and fails closed (blocks) on internal errors.
 - Independent accuracy benchmark on Samsung CredData against Gitleaks and TruffleHog, with the evaluation
   script (benchmarks/).
 

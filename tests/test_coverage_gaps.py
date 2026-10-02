@@ -102,8 +102,8 @@ def test_aws_temporary_and_mismatched_keys(monkeypatch):
 
 
 def test_imported_kinds_get_generic_guidance():
-    assert P.verify("Doppler API token", "dp.pt.x").status == P.UNSUPPORTED
-    ok, msg = P.revoke("Doppler API token", "dp.pt.x", P.Result(P.LIVE))
+    assert P.verify("Okta access token", "00okta").status == P.UNSUPPORTED
+    ok, msg = P.revoke("Okta access token", "00okta", P.Result(P.LIVE))
     assert not ok and "dashboard" in msg
 
 

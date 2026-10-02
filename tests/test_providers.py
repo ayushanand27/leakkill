@@ -174,3 +174,45 @@ def test_every_detector_has_remediation():
     from leakkill.scanner import RULES
     for kind in list(RULES) + ["High-entropy secret"]:
         assert P.PROVIDERS[kind].manual, kind
+
+
+NEW = [  # kind, method, url, body that names the account, expected identity
+    ("Postman API token", "GET", "https://api.getpostman.com/me", {"user": {"username": "ayu"}}, "ayu"),
+    ("Linear API key", "POST", "https://api.linear.app/graphql", {"data": {"viewer": {"email": "a@x.io"}}}, "a@x.io"),
+    ("Notion API token", "GET", "https://api.notion.com/v1/users/me", {"name": "bot"}, "bot"),
+    ("Sentry user token", "GET", "https://sentry.io/api/0/", {"user": {"email": "s@x.io"}}, "s@x.io"),
+    ("Netlify access token", "GET", "https://api.netlify.com/api/v1/user", {"email": "n@x.io"}, "n@x.io"),
+    ("Doppler API token", "GET", "https://api.doppler.com/v3/me", {"workplace": {"name": "acme"}}, "acme"),
+    ("Pulumi API token", "GET", "https://api.pulumi.com/api/user", {"githubLogin": "pl"}, "pl"),
+    ("Heroku API key v2", "GET", "https://api.heroku.com/account", {"email": "h@x.io"}, "h@x.io"),
+    ("Sendinblue API token", "GET", "https://api.brevo.com/v3/account", {"email": "b@x.io"}, "b@x.io"),
+    ("Square access token", "GET", "https://connect.squareup.com/v2/merchants/me", {"merchant": {"business_name": "Shop"}}, "Shop"),
+    ("Airtable API key", "GET", "https://api.airtable.com/v0/meta/whoami", {"id": "usr1"}, "usr1"),
+    ("Dropbox API token", "POST", "https://api.dropboxapi.com/2/users/get_current_account", {"email": "d@x.io"}, "d@x.io"),
+    ("Launchdarkly access token", "GET", "https://app.launchdarkly.com/api/v2/caller-identity", {"tokenName": "ci"}, "ci"),
+    ("Mailchimp API key", "GET", "https://us6.api.mailchimp.com/3.0/", {"account_name": "Acme"}, "Acme"),
+]
+
+
+@pytest.mark.parametrize("kind,method,url,body,who", NEW)
+def test_new_providers_live_dead_unknown(fake, kind, method, url, body, who):
+    key = "k" * 30 + "-us6"
+    fake({(method, url): (200, {}, json.dumps(body).encode())})
+    r = P.verify(kind, key)
+    assert r.status == P.LIVE and r.identity == who
+    fake({(method, url): (401, {}, b"")})
+    assert P.verify(kind, key).status == P.DEAD
+    fake({(method, url): (403, {}, b"")})  # anything but 401 is never called DEAD
+    assert P.verify(kind, key).status == P.UNKNOWN
+    fake({(method, url): (200, {}, b"not json")})
+    assert P.verify(kind, key).status == P.LIVE  # odd body: still live, just no identity
+
+
+def test_cloudflare_and_mailchimp_edges(fake):
+    url = "https://api.cloudflare.com/client/v4/user/tokens/verify"
+    fake({("GET", url): (200, {}, b'{"result": {"status": "active"}}')})
+    assert P.verify("Cloudflare API key", "c" * 40).status == P.LIVE
+    fake({("GET", url): (200, {}, b'{"result": {"status": "disabled"}}')})
+    assert P.verify("Cloudflare API key", "c" * 40).status == P.DEAD
+    f = fake({})  # a key without a -usNN suffix never picks a host
+    assert P.verify("Mailchimp API key", "m" * 32 + "-evil.example.com").status == P.UNKNOWN and not f.calls

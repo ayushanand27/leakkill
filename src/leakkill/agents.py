@@ -4,7 +4,7 @@ plain text, and was sent to the model provider).
 
 Credential stores the agents are meant to use (e.g. ~/.codex/auth.json) are skipped: that is where tokens belong.
 """
-import functools, json, os, sys
+import functools, glob, json, os, pathlib, sqlite3, sys
 
 from .scanner import _parallel, scan_text
 
@@ -29,6 +29,11 @@ ENV_HOMES = {"CLAUDE_CONFIG_DIR": "Claude Code", "CODEX_HOME": "Codex", "COPILOT
 SKIP_NAMES = {".credentials.json", "auth.json", "oauth_creds.json", "google_accounts.json", "plugins", "extensions",
               "node_modules", "pkg", "statsig", "ide", ".git", "cache", "Cache"}
 TEXT_EXT = {".json", ".jsonl", ".toml", ".yaml", ".yml", ".md", ".txt", ".log", ".env", ".sh", ".ini", ".cfg", ""}
+# Cursor and VS Code (Copilot Chat) keep chats in SQLite databases (state.vscdb) under the editor's user folder.
+EDITOR_DIRS = {"Cursor": ["Library/Application Support/Cursor/User", ".config/Cursor/User"],
+               "VS Code": ["Library/Application Support/Code/User", ".config/Code/User"]}
+EDITOR_APPDATA = {"Cursor": "Cursor/User", "VS Code": "Code/User"}
+DB_TABLES = ("ItemTable", "cursorDiskKV")  # key/value tables; chats are JSON values
 MAX_FILE = 500_000_000
 CHUNK = 1_000_000
 
@@ -130,15 +135,64 @@ def scan_file(path, home=None):
         return []
 
 
+def editor_dbs(home=None, env=None):
+    """[(agent, state.vscdb path)] for Cursor and VS Code on this machine."""
+    home = home or os.path.expanduser("~")
+    env = os.environ if env is None else env
+    roots = [(a, os.path.join(home, d)) for a, ds in EDITOR_DIRS.items() for d in ds]
+    if env.get("APPDATA"):
+        roots += [(a, os.path.join(env["APPDATA"], d)) for a, d in EDITOR_APPDATA.items()]
+    found = []
+    for agent, root in roots:
+        for db in [os.path.join(root, "globalStorage", "state.vscdb")] + sorted(
+                glob.glob(os.path.join(glob.escape(root), "workspaceStorage", "*", "state.vscdb"))):
+            if os.path.isfile(db):
+                found.append((agent, db))
+    return found
+
+
+def _db_rows(con, table):
+    for rowid, value in con.execute(f"SELECT rowid, value FROM {table}"):  # table names are our constants
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", "replace")
+        if not isinstance(value, str) or len(value) > 20_000_000:
+            continue
+        try:
+            value = "\n".join(_strings(json.loads(value)))
+        except ValueError:
+            pass
+        yield rowid, value
+
+
+def scan_db(path, home=None):
+    """Read an editor's state.vscdb read-only and scan its chat/key-value rows; findings point at table:rowid."""
+    home = home or os.path.expanduser("~")
+    display = _display(path, home)
+    found = []
+    try:  # read-only; immutable=1 skips locking so a running editor isn't disturbed
+        con = sqlite3.connect(pathlib.Path(path).resolve().as_uri() + "?mode=ro&immutable=1", uri=True)
+        try:
+            tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            for table in DB_TABLES:
+                if table in tables:
+                    found += _scan_stream(_db_rows(con, table), f"{display}#{table}")
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return []
+    return found
+
+
 def scan_agents(home=None, cwd=None, env=None, quiet=False):
     """Scan every agent location found; return Findings with ~-relative paths."""
     home = home or os.path.expanduser("~")
     where = places(home, cwd, env)
+    dbs = editor_dbs(home, env)
     if not quiet:
-        names = ", ".join(dict.fromkeys(a for a, _ in where)) or "none found"
+        names = ", ".join(dict.fromkeys(a for a, _ in where + dbs)) or "none found"
         print(f"Scanning AI agent files: {names}", file=sys.stderr)
     files = list(dict.fromkeys(f for _, p in where for f in _files(p)))
-    return _parallel(functools.partial(scan_file, home=home), files)
+    return _parallel(functools.partial(scan_file, home=home), files) + [f for _, db in dbs for f in scan_db(db, home)]
 
 
 ADVICE = ("Secrets in agent transcripts and histories were sent to the model provider and sit on disk in plain "

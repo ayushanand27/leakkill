@@ -65,7 +65,8 @@ below), `--exclude-tests` and `--json`.
 | AWS access key and secret | ✅ IAM ARN and account (STS, needs no permissions) | ⚠️ deactivates the key if it has `iam:UpdateAccessKey`, otherwise console steps |
 | SendGrid (`SG.`) | ✅ scopes | ✅ the key deletes itself if it has API-key permissions |
 | Stripe (live and test keys), OpenAI, Anthropic, OpenRouter, Groq, Hugging Face, Replicate, DigitalOcean, npm, Telegram, Slack webhooks | ✅ (account or username where the API returns it) | ❌ the provider has no API for it, so you get the exact page or command |
-| Google API keys, Shopify, PyPI, Docker Hub, Twilio, Postman, Perplexity, Linear, Azure Storage, private keys, JWTs, credentials in URLs and Basic auth headers, generic high-entropy secrets | detected, not verified | step-by-step rotation guidance |
+| Postman, Linear, Notion, Sentry, Netlify, Doppler, Pulumi, Heroku, Brevo, Square, Airtable, Dropbox, LaunchDarkly, Cloudflare, Mailchimp | ✅ (account where the API returns it); live only on HTTP 200, dead only on 401 | ❌ you get the exact page to revoke it |
+| Google API keys, Shopify, PyPI, Docker Hub, Twilio, Perplexity, Azure Storage, private keys, JWTs, credentials in URLs and Basic auth headers, generic high-entropy secrets | detected, not verified | step-by-step rotation guidance |
 
 ## How it compares
 
@@ -75,7 +76,7 @@ below), `--exclude-tests` and `--json`.
 | Runs fully local | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ SaaS |
 | Install | `pip` (zero dependencies) or Docker | Rust binary | Go binary | Go binary | Go binary | CLI + account |
 | Detection rules | 246 | ~485 | 463 | 150+ | 800+ | 550+ |
-| Checks if a key is live | ✅ 17 providers | ✅ hundreds | ✅ | ❌ | ✅ 700+ | ✅ |
+| Checks if a key is live | ✅ 32 services | ✅ hundreds | ✅ | ❌ | ✅ 700+ | ✅ |
 | Revokes from the CLI | ✅ 6 providers | ✅ some providers | ❌ | ❌ | ❌ (Enterprise) | partial |
 | Remediation report with ordered steps + history purge | ✅ | HTML report, blast-radius map | ❌ | ❌ | ❌ | ✅ |
 | Guards AI coding agents | ✅ Claude Code, Cursor, Copilot, Codex | ❌ | ❌ | ❌ | ❌ | ✅ (hooks, paid platform) |
@@ -126,7 +127,7 @@ End to end on Windows with real, throwaway credentials:
 
 Against the real AWS, GitLab, Anthropic and npm APIs, invalid keys are correctly reported DEAD.
 Providers not yet tested with a live key (OpenAI, OpenRouter, Groq, Replicate, DigitalOcean,
-SendGrid, Telegram) are covered by tests using simulated API responses.
+SendGrid, Telegram, and the 15 added in 0.7) are covered by tests using simulated API responses.
 
 ### Accuracy (independent dataset)
 
@@ -150,7 +151,7 @@ leakkill somewhat; false alarms on four clean repositories (requests, flask, dja
 
 ### How it's tested
 
-- 138 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
+- 154 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
 - Property-based fuzz tests: the scanner never crashes on random input, never prints a raw secret, finds a
   planted token in any surrounding text, and gives the same answer scanning a whole file or line by line.
   (Fuzzing found two real bugs before release: a guard crash and a slow-input case, both fixed.)
@@ -224,12 +225,12 @@ API keys. A key you pasted into a chat, or a `.env` the agent read, stays on dis
 model provider. `--agents` scans, on your machine only:
 
 - Claude Code (`~/.claude.json`, `~/.claude/` including session transcripts), Codex (`~/.codex/`), GitHub
-  Copilot CLI (`~/.copilot/`), Gemini CLI (`~/.gemini/`), Cursor, Windsurf, Claude Desktop and VS Code MCP configs
+  Copilot CLI (`~/.copilot/`), Gemini CLI (`~/.gemini/`), Cursor and VS Code (Copilot Chat) chat histories, Cursor, Windsurf, Claude Desktop and VS Code MCP configs
 - this project's `.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.claude/settings*.json`, `.gemini/settings.json`
 
 Transcripts are decoded, so a key behind JSON escapes is still found and reported at its line. The agents' own
 login files (`~/.codex/auth.json`, `~/.claude/.credentials.json`, Gemini's OAuth file) are skipped, since that is
-where their tokens belong. Cursor's chat history is stored in a database and is not scanned yet.
+where their tokens belong. Cursor and VS Code keep chats in SQLite databases (`state.vscdb`); they are opened read-only, so a running editor is never disturbed.
 
 ## Use in CI (GitHub Action)
 
@@ -302,7 +303,7 @@ baseline doesn't make it safe: revoke real keys first.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/ayushanand27/leakkill
-    rev: v0.6.1
+    rev: v0.7.0
     hooks:
       - id: leakkill
 ```
@@ -324,7 +325,6 @@ Or without the framework: `leakkill install-hook`.
 - The agent guard is pattern-based: a command that builds a file name at runtime can get past it. The Cursor,
   Copilot and Codex guards are tested against their documented hook formats; only Claude Code was tested in the
   real app. Copilot ignores prompt hooks, so a key typed into a Copilot prompt is warned about, not blocked.
-- `--agents` doesn't read Cursor's chat history (a database), only its MCP config.
 - On very large repositories (tens of MB) scanning is about 2x slower than Gitleaks.
 - Verification behind a proxy that injects its own credentials (some corporate and sandbox proxies
   do) can report the proxy's identity. Run `verify` from a normal network.

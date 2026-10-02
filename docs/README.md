@@ -44,7 +44,7 @@ Available on `scan`, `verify`, `revoke` and `report`:
 |---|---|
 | `--staged` | Scan staged git changes (what you are about to commit). |
 | `--history` | Scan every commit on every branch, including secrets you already "deleted". |
-| `--agents` | Scan AI agents' files on this machine: MCP configs, settings, session transcripts. |
+| `--agents` | Scan AI agents' files on this machine: MCP configs, settings, session transcripts, Cursor/VS Code chat databases. |
 | `--exclude-tests` | Skip `test_*` files and `tests/` directories. |
 | `--json` | Machine-readable output (see below). |
 | `--baseline FILE` | Ignore secrets recorded in a baseline file. |

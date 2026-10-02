@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 (2026-10-02)
+
+- `verify` checks 15 more services, 32 in total: Postman, Linear, Notion, Sentry, Netlify, Doppler, Pulumi,
+  Heroku, Brevo, Square, Airtable, Dropbox, LaunchDarkly, Cloudflare and Mailchimp, each with a read-only
+  "who am I" call to its own hard-coded host. A key is reported DEAD only on HTTP 401; any other answer is
+  UNKNOWN, so an unexpected response never makes a live key look safe. Revoke guidance links each dashboard.
+- `--agents` now reads Cursor and VS Code (Copilot Chat) chat histories from their `state.vscdb` SQLite
+  databases, read-only (standard library `sqlite3`, still no dependencies); findings point at table and row.
+
 ## 0.6.1 (2026-10-02)
 
 - Docker image: `docker run --rm -v "$PWD:/scan" ghcr.io/ayushanand27/leakkill`, published to GitHub

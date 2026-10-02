@@ -86,3 +86,24 @@ def test_report_says_delete_session_file(tmp_path):
     fs = agents.scan_agents(str(fake_home(tmp_path)), str(tmp_path), env={}, quiet=True)
     items = [Item(1, f.kind, f.secret, [f]) for f in fs if f.kind == "Slack token"]
     assert "Delete the agent session file" in report.render(items, "AI agent files", verified=False)
+
+
+def test_cursor_and_vscode_chat_databases(tmp_path):
+    import sqlite3
+    home = tmp_path / "h"
+    ws = home / ".config" / "Cursor" / "User" / "workspaceStorage" / "abc"
+    ws.mkdir(parents=True)
+    con = sqlite3.connect(ws / "state.vscdb")
+    con.execute("CREATE TABLE ItemTable (key TEXT, value BLOB)")
+    con.execute("CREATE TABLE cursorDiskKV (key TEXT, value BLOB)")
+    con.execute("INSERT INTO ItemTable VALUES ('x', 'nothing here')")
+    con.execute("INSERT INTO cursorDiskKV VALUES ('bubbleId:1', ?)", (json.dumps({"text": f"my token {GH}"}).encode(),))
+    con.commit(); con.close()
+    vs = home / ".config" / "Code" / "User" / "globalStorage"
+    vs.mkdir(parents=True)
+    (vs / "state.vscdb").write_bytes(b"not a database")  # corrupt: skipped, never crashes
+    assert [a for a, _ in agents.editor_dbs(str(home), env={})] == ["Cursor", "VS Code"]
+    fs = agents.scan_agents(str(home), str(tmp_path), env={}, quiet=True)
+    hits = [(f.kind, f.path) for f in fs]
+    assert ("GitHub token", os.path.join("~", ".config", "Cursor", "User", "workspaceStorage", "abc", "state.vscdb")
+            + "#cursorDiskKV") in hits

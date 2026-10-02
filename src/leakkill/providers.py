@@ -278,6 +278,98 @@ def sendgrid_revoke(s, res):
     return False, f"HTTP {code}: this key can't delete itself, use the dashboard"
 
 
+# ---------------------------------------------------------------- more "who am I" checks (live = 200, dead = 401 only)
+def _who(url, headers, pick=lambda j: "", method="GET", data=None):
+    code, _, body = http(method, url, headers, data)
+    if code == 200:
+        try:
+            ident = pick(_json(body)) or ""
+        except (AttributeError, TypeError, KeyError):
+            ident = ""
+        return Result(LIVE, str(ident))
+    return _by_status(code)
+
+
+def _bearer(s, **extra):
+    return {"Authorization": f"Bearer {s}", **extra}
+
+
+def postman_verify(s, ctx):
+    return _who("https://api.getpostman.com/me", {"X-Api-Key": s}, lambda j: j["user"]["username"])
+
+
+def linear_verify(s, ctx):
+    return _who("https://api.linear.app/graphql", {"Authorization": s, "Content-Type": "application/json"},
+                lambda j: j["data"]["viewer"]["email"], "POST", b'{"query":"{ viewer { email } }"}')
+
+
+def notion_verify(s, ctx):
+    return _who("https://api.notion.com/v1/users/me", _bearer(s, **{"Notion-Version": "2022-06-28"}),
+                lambda j: j.get("name"))
+
+
+def sentry_verify(s, ctx):
+    return _who("https://sentry.io/api/0/", _bearer(s), lambda j: (j.get("user") or {}).get("email"))
+
+
+def netlify_verify(s, ctx):
+    return _who("https://api.netlify.com/api/v1/user", _bearer(s), lambda j: j.get("email"))
+
+
+def doppler_verify(s, ctx):
+    return _who("https://api.doppler.com/v3/me", _bearer(s), lambda j: (j.get("workplace") or {}).get("name"))
+
+
+def pulumi_verify(s, ctx):
+    return _who("https://api.pulumi.com/api/user", {"Authorization": f"token {s}"},
+                lambda j: j.get("githubLogin") or j.get("name"))
+
+
+def heroku_verify(s, ctx):
+    return _who("https://api.heroku.com/account", _bearer(s, Accept="application/vnd.heroku+json; version=3"),
+                lambda j: j.get("email"))
+
+
+def brevo_verify(s, ctx):
+    return _who("https://api.brevo.com/v3/account", {"api-key": s}, lambda j: j.get("email"))
+
+
+def square_verify(s, ctx):
+    return _who("https://connect.squareup.com/v2/merchants/me", _bearer(s),
+                lambda j: (j.get("merchant") or {}).get("business_name"))
+
+
+def airtable_verify(s, ctx):
+    return _who("https://api.airtable.com/v0/meta/whoami", _bearer(s), lambda j: j.get("email") or j.get("id"))
+
+
+def dropbox_verify(s, ctx):
+    return _who("https://api.dropboxapi.com/2/users/get_current_account", _bearer(s), lambda j: j.get("email"),
+                "POST")
+
+
+def launchdarkly_verify(s, ctx):
+    return _who("https://app.launchdarkly.com/api/v2/caller-identity", {"Authorization": s},
+                lambda j: j.get("tokenName"))
+
+
+def cloudflare_verify(s, ctx):
+    code, _, body = http("GET", "https://api.cloudflare.com/client/v4/user/tokens/verify", _bearer(s))
+    if code == 200:
+        status = (_json(body).get("result") or {}).get("status", "")
+        return Result(LIVE if status == "active" else DEAD, note=f"token status: {status}")
+    return _by_status(code)
+
+
+def mailchimp_verify(s, ctx):
+    dc = s.rsplit("-", 1)[-1]
+    if not re.fullmatch(r"us\d{1,2}", dc):  # the data center picks the host, so it must look like one
+        return Result(UNKNOWN, note="no data center suffix (-usNN) in the key")
+    auth = base64.b64encode(f"leakkill:{s}".encode()).decode()
+    return _who(f"https://{dc}.api.mailchimp.com/3.0/", {"Authorization": f"Basic {auth}"},
+                lambda j: j.get("account_name"))
+
+
 @dataclass
 class Provider:
     verify: object = None
@@ -340,6 +432,27 @@ PROVIDERS = {
                                                "service account: its admin console) and restrict network access to it."),
     "Basic auth credentials": Provider(None, None, "The text after `Basic` is just base64 of user:password. Change "
                                                    "that user's password in the service it logs in to."),
+    "Postman key": Provider(postman_verify, None, "Delete it at https://go.postman.co/settings/me/api-keys."),
+    "Postman API token": Provider(postman_verify, None, "Delete it at https://go.postman.co/settings/me/api-keys."),
+    "Linear key": Provider(linear_verify, None, "Revoke it in Linear: Settings > Account > Security & access."),
+    "Linear API key": Provider(linear_verify, None, "Revoke it in Linear: Settings > Account > Security & access."),
+    "Notion API token": Provider(notion_verify, None, "Refresh the secret at https://www.notion.so/my-integrations."),
+    "Sentry user token": Provider(sentry_verify, None, "Revoke it at https://sentry.io/settings/account/api/auth-tokens/."),
+    "Sentry org token": Provider(sentry_verify, None, "Revoke it in Sentry: Settings > Developer Settings > Org Tokens."),
+    "Netlify access token": Provider(netlify_verify, None,
+                                     "Revoke it at https://app.netlify.com/user/applications#personal-access-tokens."),
+    "Doppler API token": Provider(doppler_verify, None, "Revoke it in Doppler: Settings > Tokens / Access."),
+    "Pulumi API token": Provider(pulumi_verify, None, "Delete it at https://app.pulumi.com/account/tokens."),
+    "Heroku API key v2": Provider(heroku_verify, None, "Revoke it with `heroku authorizations:revoke` or in Account settings."),
+    "Heroku API key": Provider(heroku_verify, None, "Regenerate it in Heroku: Account settings > API Key."),
+    "Sendinblue API token": Provider(brevo_verify, None, "Delete it at https://app.brevo.com/settings/keys/api."),
+    "Square access token": Provider(square_verify, None, "Revoke or replace it in the Square Developer Dashboard."),
+    "Airtable API key": Provider(airtable_verify, None, "Delete it at https://airtable.com/create/tokens."),
+    "Dropbox API token": Provider(dropbox_verify, None, "Revoke the app's access at https://www.dropbox.com/account/connected_apps."),
+    "Launchdarkly access token": Provider(launchdarkly_verify, None,
+                                          "Delete it in LaunchDarkly: Organization settings > Authorization."),
+    "Cloudflare API key": Provider(cloudflare_verify, None, "Roll or delete it at https://dash.cloudflare.com/profile/api-tokens."),
+    "Mailchimp API key": Provider(mailchimp_verify, None, "Delete it in Mailchimp: Profile > Extras > API keys."),
     "High-entropy secret": Provider(None, None, "Treat as compromised: rotate it with whoever issued it."),
 }
 

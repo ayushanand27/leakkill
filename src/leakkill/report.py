@@ -61,7 +61,7 @@ def render(items, target, verified=True):
         lines += [head, "", f"1. **Revoke / rotate:** {_action(it)}"]
         if r and r.note:
             lines[-1] += f"  \n   _Check result: {r.note}_"
-        logs = [f for f in it.findings if f.path.endswith(".jsonl")]
+        logs = [f for f in it.findings if f.path.endswith(".jsonl") or ".vscdb#" in f.path]
         if logs:  # an AI agent's session transcript / history (`leakkill --agents`)
             lines += [f"2. **Delete the agent session file(s)** that hold it in plain text "
                       f"({', '.join('`' + f.path + '`' for f in logs[:3])}). It was also sent to the model "

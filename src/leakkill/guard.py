@@ -8,7 +8,7 @@ One detection core, with small adapters for each agent's hook format:
 """
 import json, os, re, stat, sys
 
-from .scanner import ignored, load_ignores, scan_text
+from .scanner import ignored, load_ignores, mask, scan_text
 
 AGENTS = ("claude", "cursor", "copilot", "codex")
 SENSITIVE_FILE = re.compile(
@@ -150,6 +150,15 @@ def _respond(agent, event_name, reasons):
     return 0
 
 
+def _redact(reasons, event, raw):
+    """Mask every secret the event contains wherever a message would repeat it (e.g. a key in a file name):
+    the guard's own answer goes back to the agent, so it must never carry a raw secret."""
+    found = {f.secret for text in [raw, *_strings(event)] for f in scan_text(text, "event")}
+    for secret in sorted(found, key=len, reverse=True):
+        reasons = [r.replace(secret, mask(secret)) for r in reasons]
+    return reasons
+
+
 def guard(raw, agent="claude"):
     try:
         event = json.loads(raw)
@@ -161,7 +170,7 @@ def guard(raw, agent="claude"):
     except Exception as e:  # an unexpected bug must not let a secret through: fail closed, and say so
         reasons = [f"leakkill guard hit an internal error ({type(e).__name__}) and blocked this action to be safe. "
                    "Please report it: https://github.com/ayushanand27/leakkill/issues"]
-    return _respond(agent, name, reasons)
+    return _respond(agent, name, _redact(reasons, event, raw) if reasons else reasons)
 
 
 # ---------------------------------------------------------------- installers

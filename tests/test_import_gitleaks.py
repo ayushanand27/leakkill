@@ -40,3 +40,14 @@ def test_harden_strips_stacked_name_prefixes_and_bounds_curl_spans():
     curl = r"\bcurl\b(?:.*?|.*?(?:[\r\n]{1,2}.*?){1,5})[ \t\n\r](?:-H)"
     assert ".*?" not in imp.harden(curl)
     assert re.search(imp.harden(curl), "curl https://x \\\n  -H")
+
+
+def test_allowlisted_example_keys_are_defanged_but_still_match():
+    import re
+    from leakkill.gitleaks_rules import RULES
+
+    sample = "AIza" + "Syabcdefghijklmnopqrstuvwxyz1234567"  # split: GitHub would flag the literal
+    assert imp.defang("AIza" + "Sy.*") == "AIz[a]Sy.*"
+    gcp = next(r for r in RULES if r["id"] == "gcp-api-key")
+    regexes = [x for a in gcp["allow"] for x in a["regexes"]]
+    assert all("AIza" not in x for x in regexes) and any(re.search(x, sample) for x in regexes)

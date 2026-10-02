@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (2026-10-02)
 
 - AI agent guard for **Cursor, GitHub Copilot CLI and OpenAI Codex**, in addition to Claude Code:
   `leakkill install-agent-hooks [claude|cursor|copilot|codex ...] [--global]`, and `leakkill guard --agent`.
@@ -13,6 +13,12 @@
   reported by line; the agents' own login files are skipped.
 - Fewer false alarms from code: template values (`AKIA{R(16)}`), URLs and `filename=...` are not secrets, and
   imported rules ignore placeholders and env var names (`YOUR_NEW_TOKEN`, `${PASSWORD}`).
+- Security: the agent guard no longer repeats a secret from a file name back to the agent (found by the new
+  ClusterFuzzLite fuzzer); the `--replacements` file is created owner-only (0600) from the start instead of
+  being restricted after writing.
+- Coverage-guided fuzzing (Atheris + ClusterFuzzLite) on pull requests and weekly; GitHub releases are
+  Sigstore-signed; the CodeQL workflow has pinned actions and least-privilege permissions; Google's sample
+  keys in the imported allowlist are written as `AIz[a]...` so GitHub secret scanning stops flagging them.
 - Recall on real code up from 0.217 to 0.300 on Samsung CredData, with precision up from 0.893 to 0.921
   (OpenSSL test vectors excluded; full dataset: recall 0.251 to 0.510, F1 0.386 to 0.630):
   - HTTP Basic auth (`Authorization: Basic …`), reported only when it decodes to a real-looking

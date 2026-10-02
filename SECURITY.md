@@ -13,8 +13,21 @@ Especially in scope:
 - a secret sent anywhere other than the provider that issued it, or followed through a redirect
 - a raw secret written to output, reports, SARIF, baselines or logs (masked values and hashes are by design)
 - `revoke` acting without `--yes`, or on a key that didn't verify as live
-- the Claude Code guard being bypassed in a way not listed under "Known limitations" in the README
+- the AI agent guard (Claude Code, Cursor, Copilot, Codex) being bypassed in a way the README doesn't already list
+- the guard repeating a raw secret back to the agent in its own message
 - anything that lets a malicious repository run code when it is scanned
+
+## Verifying a release
+
+PyPI files carry attestations from trusted publishing. From 0.6.0 on, every GitHub release also includes a
+Sigstore signature for each file (`*.sigstore.json`), made in CI with no long-lived key:
+
+```sh
+pip install sigstore
+sigstore verify github leakkill-0.6.0-py3-none-any.whl \
+  --bundle leakkill-0.6.0-py3-none-any.whl.sigstore.json \
+  --cert-identity https://github.com/ayushanand27/leakkill/.github/workflows/publish.yml@refs/heads/main
+```
 
 ## Supported versions
 

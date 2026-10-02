@@ -143,15 +143,18 @@ leakkill somewhat; false alarms on four clean repositories (requests, flask, dja
 
 ### How it's tested
 
-- 134 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
+- 137 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
 - Property-based fuzz tests: the scanner never crashes on random input, never prints a raw secret, finds a
   planted token in any surrounding text, and gives the same answer scanning a whole file or line by line.
   (Fuzzing found two real bugs before release: a guard crash and a slow-input case, both fixed.)
+- Coverage-guided fuzzing with Atheris via ClusterFuzzLite on every pull request and weekly, of the scanner,
+  the transcript reader and the AI agent guard. Its first run found a real bug in under a minute: the
+  guard could quote a secret hidden in a file name back to the agent. Fixed, with a regression test.
 - Every one of the 246 rules is checked in CI against hostile input built from its own keywords, because
   Python's regex engine, unlike Go's, can be made to backtrack for minutes. The sweep found and fixed 4
   such rules among those imported from Gitleaks.
 - Live tests against real APIs with real throwaway keys (above), and of the Claude Code guard in the real CLI.
-- SonarCloud, OpenSSF Scorecard, pinned and hash-locked CI tooling, signed PyPI provenance.
+- SonarCloud, OpenSSF Scorecard, pinned and hash-locked CI tooling, signed PyPI provenance, Sigstore-signed GitHub releases (see SECURITY.md).
 
 ## Safety model
 
@@ -292,7 +295,7 @@ baseline doesn't make it safe: revoke real keys first.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/ayushanand27/leakkill
-    rev: v0.5.0
+    rev: v0.6.0
     hooks:
       - id: leakkill
 ```
@@ -308,9 +311,13 @@ Or without the framework: `leakkill install-hook`.
 
 ## Known limitations
 
-- Finds fewer real credentials than Betterleaks (recall 0.25 vs 0.56 on CredData), and has fewer rules than
-  Kingfisher or TruffleHog.
-- Scans files and git history only: not Slack, Jira, Confluence, S3 or Docker images.
+- Finds fewer real credentials than Betterleaks (recall 0.30 vs 0.38 on real code in CredData, with far fewer
+  false alarms), and has fewer rules than Kingfisher or TruffleHog.
+- Scans files, git history and local AI agent files: not Slack, Jira, Confluence, S3 or Docker images.
+- The agent guard is pattern-based: a command that builds a file name at runtime can get past it. The Cursor,
+  Copilot and Codex guards are tested against their documented hook formats; only Claude Code was tested in the
+  real app. Copilot ignores prompt hooks, so a key typed into a Copilot prompt is warned about, not blocked.
+- `--agents` doesn't read Cursor's chat history (a database), only its MCP config.
 - On very large repositories (tens of MB) scanning is about 2x slower than Gitleaks.
 - Verification behind a proxy that injects its own credentials (some corporate and sandbox proxies
   do) can report the proxy's identity. Run `verify` from a normal network.

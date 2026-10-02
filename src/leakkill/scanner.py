@@ -66,10 +66,12 @@ def _has_keyword(keywords, text, lower):
 # substring search for each keyword, then this short pattern anchored right after it. Every part is bounded or
 # anchored, so matching stays linear even on huge (e.g. minified) lines.
 # Covers `key = "v"`, `"key": "v"` (JSON), `'key' => 'v'` (PHP/Ruby) and unquoted `key: v` / `KEY=v` (YAML, .env).
-# Every part has an upper bound (values up to 1000 chars), so each keyword hit costs a bounded amount of work and
+# Every part has an upper bound (values up to 4096 chars), so each keyword hit costs a bounded amount of work and
 # a hostile line like `secret=secret=secret=...` stays linear instead of quadratic.
-ASSIGN_TAIL = re.compile(r"""[\w.-]{0,40}["']?[^\S\n]{0,20}(?:=>|[:=])[^\S\n]{0,20}"""
-                         r"""(?:["']([^"'\s]{12,1000})["']|([A-Za-z0-9+/=_\-.~]{12,1000})(?=[\s,;]|$))""")
+ASSIGN_TAIL = re.compile(r"""[\w.-]{0,40}["']?[^\S\n]{0,100}(?:=>|[:=])[^\S\n]{0,100}"""
+                         r"""(?:["'](?=([^"'\s]{12,4096}))\1["']|(?=([A-Za-z0-9+/=_\-.~]{12,4096}))\2(?=[\s,;]|$))""")
+# `(?=(X))\1` is an atomic group: the value is taken greedily and never shortened again. Shortening could never
+# succeed anyway (a value's characters and its terminators are disjoint), but trying it made hostile input slow.
 ASSIGN_NAMES = ["secret", "token", "passwd", "password", "api_key", "api-key", "apikey", "private_key", "private-key",
                 "privatekey", "auth", "access_key", "access-key", "accesskey", "credential", "client_key", "client-key"]
 # Values shaped like code rather than secrets: `self.author_1`, `obj.pk`, `MY_CONSTANT_NAME`, `some_identifier`.

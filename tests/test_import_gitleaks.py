@@ -29,3 +29,14 @@ def test_backslash_z_and_char_classes():
 def test_humanize():
     assert imp.humanize("alibaba-access-key-id") == "Alibaba access key ID"
     assert imp.humanize("github-pat") == "GitHub PAT"
+
+
+def test_harden_strips_stacked_name_prefixes_and_bounds_curl_spans():
+    rx = r"[\w.-]{0,50}?(?i:[\w.-]{0,50}?(?:cohere|CO_API_KEY)(?:[ \t\w.-]{0,20}))=([a-z]{4})"
+    hard = imp.harden(rx)
+    assert hard == r"(?i:(?:cohere|CO_API_KEY)(?:[ \t\w.-]{0,20}))=([a-z]{4})"
+    for text in ["my_cohere_key=abcd", "COHERE=abcd"]:  # same secret found before and after
+        assert re.search(rx, text).group(1) == re.search(hard, text).group(1)
+    curl = r"\bcurl\b(?:.*?|.*?(?:[\r\n]{1,2}.*?){1,5})[ \t\n\r](?:-H)"
+    assert ".*?" not in imp.harden(curl)
+    assert re.search(imp.harden(curl), "curl https://x \\\n  -H")

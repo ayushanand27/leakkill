@@ -1,5 +1,7 @@
 # leakkill
 
+[![PyPI](https://img.shields.io/pypi/v/leakkill)](https://pypi.org/project/leakkill/) [![CI](https://github.com/ayushanand27/leakkill/actions/workflows/ci.yml/badge.svg)](https://github.com/ayushanand27/leakkill/actions/workflows/ci.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ayushanand27/leakkill/badge)](https://scorecard.dev/viewer/?uri=github.com/ayushanand27/leakkill)
+
 **Leaked a key? Find it, see if it's live, and kill it in one command. Free, local, zero dependencies.**
 
 Free tools are great at *finding* secrets. What happens *after* a leak is usually left to paid

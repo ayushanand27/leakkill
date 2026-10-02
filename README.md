@@ -125,7 +125,7 @@ End to end on Windows with real, throwaway credentials:
 | Stripe test key | LIVE, correct account, "test mode" | manual roll in dashboard | |
 | Hugging Face token | LIVE, correct user and token role | manual delete | |
 | Postman API key | LIVE, correct username | manual delete (page linked) | DEAD |
-| Netlify access token | LIVE, correct account email | manual delete (page linked) | |
+| Netlify access token | LIVE, correct account email | manual delete (page linked) | DEAD |
 
 Against the real AWS, GitLab, Anthropic and npm APIs, invalid keys are correctly reported DEAD.
 Providers not yet tested with a live key (OpenAI, OpenRouter, Groq, Replicate, DigitalOcean,

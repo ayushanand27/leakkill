@@ -66,8 +66,10 @@ def _has_keyword(keywords, text, lower):
 # substring search for each keyword, then this short pattern anchored right after it. Every part is bounded or
 # anchored, so matching stays linear even on huge (e.g. minified) lines.
 # Covers `key = "v"`, `"key": "v"` (JSON), `'key' => 'v'` (PHP/Ruby) and unquoted `key: v` / `KEY=v` (YAML, .env).
-ASSIGN_TAIL = re.compile(r"""[\w.-]{0,40}["']?[^\S\n]*(?:=>|[:=])[^\S\n]*"""
-                         r"""(?:["']([^"'\s]{12,})["']|([A-Za-z0-9+/=_\-.~]{12,})(?=[\s,;]|$))""")
+# Every part has an upper bound (values up to 1000 chars), so each keyword hit costs a bounded amount of work and
+# a hostile line like `secret=secret=secret=...` stays linear instead of quadratic.
+ASSIGN_TAIL = re.compile(r"""[\w.-]{0,40}["']?[^\S\n]{0,20}(?:=>|[:=])[^\S\n]{0,20}"""
+                         r"""(?:["']([^"'\s]{12,1000})["']|([A-Za-z0-9+/=_\-.~]{12,1000})(?=[\s,;]|$))""")
 ASSIGN_NAMES = ["secret", "token", "passwd", "password", "api_key", "api-key", "apikey", "private_key", "private-key",
                 "privatekey", "auth", "access_key", "access-key", "accesskey", "credential", "client_key", "client-key"]
 # Values shaped like code rather than secrets: `self.author_1`, `obj.pk`, `MY_CONSTANT_NAME`, `some_identifier`.
@@ -128,11 +130,16 @@ def _assignments(text, lower):
     found = {}
     for kw in ASSIGN_NAMES:
         i = lower.find(kw)
+        skip_until = -1
         while i != -1:
+            if i < skip_until:  # this keyword sits inside a value already matched: nothing new to find here
+                i = lower.find(kw, skip_until)
+                continue
             m = None if kw == "auth" and lower.startswith("or", i + 4) else ASSIGN_TAIL.match(text, i + len(kw))
             if m:  # (`auth` inside `author` / `authority` is not a credential name)
                 g = 1 if m.group(1) is not None else 2
                 value = m.group(g)
+                skip_until = m.end(g)
                 if m.start(g) not in found and not CODE_LIKE.fullmatch(value):
                     before = IDENT.search(text, max(0, i - 40), i)
                     found[m.start(g)] = (i, value, (before.group(0) if before else "") + text[i:m.start(g)])

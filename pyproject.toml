@@ -36,3 +36,12 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/leakkill"]
+omit = ["*/gitleaks_rules.py"]  # generated rule data
+
+[tool.coverage.report]
+fail_under = 88
+show_missing = true

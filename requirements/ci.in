@@ -4,3 +4,4 @@ pytest
 build
 twine
 setuptools>=77
+coverage

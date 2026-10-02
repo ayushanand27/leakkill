@@ -361,9 +361,9 @@ def verify(kind, secret, ctx=None):
 
 
 def revoke(kind, secret, result):
-    p = PROVIDERS.get(kind)
-    if not p or not p.revoke:
-        return False, "no revocation API: " + (p.manual if p else "rotate it manually")
+    p = provider(kind)
+    if not p.revoke:
+        return False, "no revocation API: " + p.manual
     try:
         return p.revoke(secret, result)
     except Exception as e:

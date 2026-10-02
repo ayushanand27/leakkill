@@ -128,7 +128,7 @@ by the same script ([details and how to reproduce](benchmarks/README.md)):
 
 | | precision | recall | F1 | without OpenSSL test vectors (P / R / F1) | passwords in URLs | HTTP Basic auth |
 |---|---|---|---|---|---|---|
-| **leakkill 0.6** | 0.824 | 0.510 | **0.630** | 0.920 / 0.300 / 0.452 | **182/209** | **601/601** |
+| **leakkill 0.6** | 0.824 | 0.510 | **0.630** | 0.921 / 0.300 / 0.453 | **182/209** | **601/601** |
 | Betterleaks 1.9 | 0.712 | **0.562** | 0.628 | 0.585 / **0.379** / **0.460** | 96/209 | 10/601 |
 | Gitleaks 8.28 | 0.860 | 0.453 | 0.594 | 0.910 / 0.218 / 0.351 | 0/209 | 0/601 |
 | Kingfisher 2.9 (no validation) | **0.961** | 0.104 | 0.187 | **0.925** / 0.079 / 0.145 | 20/209 | 5/601 |
@@ -136,7 +136,7 @@ by the same script ([details and how to reproduce](benchmarks/README.md)):
 
 Compare on the "without OpenSSL test vectors" column: those are public crypto test data, not leaks. There,
 leakkill and Betterleaks are level on F1. Betterleaks finds more credentials (recall 0.379 vs 0.300); leakkill
-raises far fewer false alarms (precision 0.920 vs 0.585). leakkill is far ahead on passwords in URLs and Basic
+raises far fewer false alarms (precision 0.921 vs 0.585). leakkill is far ahead on passwords in URLs and Basic
 auth headers, because it decodes and checks them. The generic rules were tuned on this dataset, which flatters
 leakkill somewhat; false alarms on four clean repositories (requests, flask, django, express) stayed at
 1 / 2 / 3 / 0.

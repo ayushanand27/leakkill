@@ -70,3 +70,19 @@ jobs:
           test "${{ steps.clean.outputs.found }}" = 0
           python -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['version']=='2.1.0' and d['runs'][0]['results']" "${{ steps.leaky.outputs.sarif-file }}"
           python -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['runs'][0]['results'] == []" "${{ steps.clean.outputs.sarif-file }}"
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - name: Build the image
+        run: docker build -t leakkill:ci .
+      - name: Smoke test (version, leaky folder fails, clean code passes, git history works)
+        run: |
+          docker run --rm leakkill:ci --version
+          if docker run --rm -v "$PWD/tests/fixtures/leaky:/scan" leakkill:ci; then exit 1; fi
+          docker run --rm -v "$PWD/src:/scan" leakkill:ci
+          repo=$(mktemp -d) && cd "$repo" && git init -q && git config user.email ci@example.com && git config user.name ci
+          echo "t = \"ghp_$(printf 'a1B2c3D4e5%.0s' 1 2 3)abcdef\"" > a.py && git add a.py && git commit -qm leak
+          git rm -q a.py && git commit -qm "remove it"
+          if docker run --rm -v "$repo:/scan" leakkill:ci --history; then exit 1; fi

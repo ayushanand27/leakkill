@@ -1,6 +1,6 @@
 # leakkill
 
-[![PyPI](https://img.shields.io/pypi/v/leakkill)](https://pypi.org/project/leakkill/) [![CI](https://github.com/ayushanand27/leakkill/actions/workflows/ci.yml/badge.svg)](https://github.com/ayushanand27/leakkill/actions/workflows/ci.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ayushanand27/leakkill/badge)](https://scorecard.dev/viewer/?uri=github.com/ayushanand27/leakkill)
+[![PyPI](https://img.shields.io/pypi/v/leakkill)](https://pypi.org/project/leakkill/) [![CI](https://github.com/ayushanand27/leakkill/actions/workflows/ci.yml/badge.svg)](https://github.com/ayushanand27/leakkill/actions/workflows/ci.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ayushanand27/leakkill/badge)](https://scorecard.dev/viewer/?uri=github.com/ayushanand27/leakkill) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15151/badge)](https://www.bestpractices.dev/projects/15151)
 
 **Leaked a key? Find it, see if it's live, and kill it in one command. Free, local, zero dependencies.**
 
@@ -154,7 +154,7 @@ leakkill somewhat; false alarms on four clean repositories (requests, flask, dja
   Python's regex engine, unlike Go's, can be made to backtrack for minutes. The sweep found and fixed 4
   such rules among those imported from Gitleaks.
 - Live tests against real APIs with real throwaway keys (above), and of the Claude Code guard in the real CLI.
-- SonarCloud, OpenSSF Scorecard, pinned and hash-locked CI tooling, signed PyPI provenance, Sigstore-signed GitHub releases (see SECURITY.md).
+- OpenSSF Best Practices (passing), SonarCloud, OpenSSF Scorecard, pinned and hash-locked CI tooling, signed PyPI provenance, Sigstore-signed GitHub releases (see SECURITY.md).
 
 ## Safety model
 

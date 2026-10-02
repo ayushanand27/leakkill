@@ -26,23 +26,30 @@ def _strings(obj):
             yield from _strings(v)
 
 
+def _str(x):
+    return x if isinstance(x, str) else ""
+
+
 def guard_check(event):
     """Return a list of human-readable reasons to block this Claude Code hook event."""
+    if not isinstance(event, dict):
+        return []
     name, reasons = event.get("hook_event_name"), []
     if name == "UserPromptSubmit":
-        for f in scan_text(event.get("prompt", ""), "prompt"):
+        for f in scan_text(_str(event.get("prompt")), "prompt"):
             reasons.append(f"prompt line {f.line} contains a {f.kind} ({f.masked})")
     elif name == "PreToolUse":
-        tool, ti = event.get("tool_name", ""), event.get("tool_input") or {}
-        path = ti.get("file_path") or ti.get("path") or ti.get("notebook_path") or ""
+        tool, ti = _str(event.get("tool_name")), event.get("tool_input")
+        ti = ti if isinstance(ti, dict) else {}
+        path = _str(ti.get("file_path")) or _str(ti.get("path")) or _str(ti.get("notebook_path"))
         if tool in READ_TOOLS and SENSITIVE_FILE.search(path):
             reasons.append(f"reading {path} would put its secrets into the model context")
-        cmd = ti.get("command", "") if tool == "Bash" else ""
+        cmd = _str(ti.get("command")) if tool == "Bash" else ""
         if cmd and SENSITIVE_MENTION.search(cmd) and not SAFE_CMD.match(cmd):
             reasons.append("shell command reads a secrets file into the model context")
         if not (path and SENSITIVE_FILE.search(path)):  # writing real secrets into .env is fine
             for text in _strings(ti):
-                for f in scan_text(text, tool):
+                for f in scan_text(text, tool or "tool input"):
                     reasons.append(f"{tool} input contains a {f.kind} ({f.masked}); use an environment variable instead")
     return reasons
 
@@ -51,8 +58,13 @@ def guard(raw):
     try:
         event = json.loads(raw)
     except ValueError:
-        return 0  # never break the agent on malformed input
-    reasons = guard_check(event)
+        return 0  # not a hook event at all: never break the agent on malformed input
+    try:
+        reasons = guard_check(event)
+    except Exception as e:  # an unexpected bug must not let a secret through: fail closed, and say so
+        print(f"leakkill guard hit an internal error ({type(e).__name__}) and blocked this action to be safe. "
+              "Please report it: https://github.com/ayushanand27/leakkill/issues", file=sys.stderr)
+        return 2
     if reasons:
         print("leakkill blocked this action:\n- " + "\n- ".join(dict.fromkeys(reasons)), file=sys.stderr)
         return 2  # Claude Code: exit 2 = block, stderr is shown to the model

@@ -11,6 +11,11 @@
 - `--write-baseline` / `--baseline`: only fail on new secrets. Baselines hold salted scrypt hashes, never
   secrets.
 - GitLab CI example.
+- Generic `name = value` rule now also finds JSON/YAML/PHP-style keys (`"secret": "..."`, `'key' => '...'`),
+  unquoted `.env`/YAML values, and `access_key` / `credential` / `client_key` names, while filtering code-like
+  values (`self.attr`, `SNAKE_CASE`) and `author`/`authority`.
+- Independent accuracy benchmark on Samsung CredData against Gitleaks and TruffleHog, with the evaluation
+  script (benchmarks/).
 
 ## 0.4.2 (2026-10-02)
 

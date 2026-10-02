@@ -54,7 +54,8 @@ KEYWORDS = {
     "Credentials in URL": ["://"],
 }
 ASSIGN_KEYWORDS = ["secret", "token", "passw", "api_key", "api-key", "apikey", "private_key", "private-key",
-                   "privatekey", "auth"]
+                   "privatekey", "auth", "access_key", "access-key", "accesskey", "credential", "client_key",
+                   "client-key"]
 
 
 def _has_keyword(keywords, text, lower):
@@ -64,9 +65,13 @@ def _has_keyword(keywords, text, lower):
 # key = "value" where the key name looks sensitive and the value looks random. Found in two steps: a plain
 # substring search for each keyword, then this short pattern anchored right after it. Every part is bounded or
 # anchored, so matching stays linear even on huge (e.g. minified) lines.
-ASSIGN_TAIL = re.compile(r"""[\w.-]{0,40}[^\S\n]*[:=][^\S\n]*["']([^"'\s]{12,})["']""")
+# Covers `key = "v"`, `"key": "v"` (JSON), `'key' => 'v'` (PHP/Ruby) and unquoted `key: v` / `KEY=v` (YAML, .env).
+ASSIGN_TAIL = re.compile(r"""[\w.-]{0,40}["']?[^\S\n]*(?:=>|[:=])[^\S\n]*"""
+                         r"""(?:["']([^"'\s]{12,})["']|([A-Za-z0-9+/=_\-.~]{12,})(?=[\s,;]|$))""")
 ASSIGN_NAMES = ["secret", "token", "passwd", "password", "api_key", "api-key", "apikey", "private_key", "private-key",
-                "privatekey", "auth"]
+                "privatekey", "auth", "access_key", "access-key", "accesskey", "credential", "client_key", "client-key"]
+# Values shaped like code rather than secrets: `self.author_1`, `obj.pk`, `MY_CONSTANT_NAME`, `some_identifier`.
+CODE_LIKE = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+|[a-z0-9]+(?:_[a-z0-9]+)+|[A-Z0-9]+(?:_[A-Z0-9]+)+")
 IDENT = re.compile(r"[\w.-]{1,40}$")
 PLACEHOLDER = re.compile(r"(?i)example|placeholder|changeme|your[_-]|xxx|<.*>|\$\{|\{\{|dummy|sample|test")
 SKIP_DIRS = {".git", "node_modules", "venv", ".venv", "__pycache__", "dist", "build", ".idea", ".tox", ".mypy_cache"}
@@ -124,10 +129,13 @@ def _assignments(text, lower):
     for kw in ASSIGN_NAMES:
         i = lower.find(kw)
         while i != -1:
-            m = ASSIGN_TAIL.match(text, i + len(kw))
-            if m and m.start(1) not in found:
-                before = IDENT.search(text, max(0, i - 40), i)
-                found[m.start(1)] = (i, m.group(1), (before.group(0) if before else "") + text[i:m.start(1)])
+            m = None if kw == "auth" and lower.startswith("or", i + 4) else ASSIGN_TAIL.match(text, i + len(kw))
+            if m:  # (`auth` inside `author` / `authority` is not a credential name)
+                g = 1 if m.group(1) is not None else 2
+                value = m.group(g)
+                if m.start(g) not in found and not CODE_LIKE.fullmatch(value):
+                    before = IDENT.search(text, max(0, i - 40), i)
+                    found[m.start(g)] = (i, value, (before.group(0) if before else "") + text[i:m.start(g)])
             i = lower.find(kw, i + 1)
     return [found[k] for k in sorted(found)]
 

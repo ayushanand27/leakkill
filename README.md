@@ -113,20 +113,20 @@ Against the real AWS, GitLab, Anthropic and npm APIs, invalid keys are correctly
 Providers not yet tested with a live key (OpenAI, OpenRouter, Groq, Replicate, DigitalOcean,
 SendGrid, Telegram) are covered by tests using simulated API responses.
 
-### Benchmark (reproducible, run October 2026)
+### Accuracy (independent dataset)
 
-Noise on clean, popular repos (unique secrets reported, default settings):
+On [Samsung CredData](https://github.com/Samsung/CredData), 67,896 lines labeled by people, scored by the
+same script for every tool ([details and how to reproduce](benchmarks/README.md)):
 
-| Repo | leakkill | Gitleaks 8.28 |
-|---|---|---|
-| psf/requests | 1 (private-key test fixtures) | 4 (same fixtures, one per file) |
-| pallets/flask | 2 (docs example `SECRET_KEY`s) | 2 (same) |
-| django/django | 1 (a CSRF test fixture) | 8 |
-| expressjs/express | 0 | 0 |
+| | precision | recall | precision / recall without OpenSSL test vectors |
+|---|---|---|---|
+| **leakkill** | 0.834 | 0.251 | 0.893 / 0.217 |
+| Gitleaks 8.28 | 0.860 | 0.453 | 0.910 / 0.218 |
+| TruffleHog 3.97 (detection only) | 0.579 | 0.024 | 0.486 / 0.026 |
 
-Recall on 17 planted realistic secrets: **leakkill 17/17, Gitleaks 14/17**. Gitleaks missed a
-Postgres URL with a password, a Discord webhook and a Telegram bot token. The planted set was written
-by us, so it is biased toward formats we support. Gitleaks detects many formats we don't.
+On ordinary code leakkill matches Gitleaks; it finds 182/209 passwords in URLs (Gitleaks 0). Gitleaks' higher
+recall on the full set comes mostly from OpenSSL crypto test vectors that leakkill deliberately doesn't flag.
+False alarms on clean repositories (requests, flask, django, express): 1 / 2 / 3 / 0.
 
 ## Safety model
 

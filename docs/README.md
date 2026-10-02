@@ -19,6 +19,9 @@ leakkill revoke               # see what can be revoked; add --yes to do it
 leakkill report               # write leakkill-report.md with cleanup steps in order
 ```
 
+Without Python: `docker run --rm -v "$PWD:/scan" ghcr.io/ayushanand27/leakkill [command] [options]`
+(the folder you mount at `/scan` is what gets scanned).
+
 ## Command reference
 
 | Command | Does | Network |

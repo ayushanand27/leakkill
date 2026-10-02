@@ -139,8 +139,16 @@ def real_password(pw, context):
         and not all(w.lower() in FAKE_PASSWORDS for w in words)
 
 
+# Template variables written in ALL_CAPS (`MASTER_PASSWORD`, `RDS_ENDPOINT`), as in docs and deploy templates.
+ENV_NAME = re.compile(r"[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+")
+
+
 def real_url_password(url):
-    return real_password(CRED_URL.match(url).group(2), url)
+    m = CRED_URL.match(url)
+    host = re.split(r"[:/?#]", m.group(3)[1:], maxsplit=1)[0]
+    if ENV_NAME.fullmatch(m.group(2)) or ENV_NAME.fullmatch(host):
+        return False
+    return real_password(m.group(2), url)
 
 
 def real_basic_auth(b64):

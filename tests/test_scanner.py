@@ -184,3 +184,10 @@ def test_basic_auth_password_with_url_characters():
     import base64
     b64 = base64.b64encode(b"svc:p@ss/w0rd Zq81").decode()
     assert kinds(f"Authorization: Basic {b64}") == ["Basic auth credentials"]
+
+
+def test_url_with_all_caps_template_parts_ignored():
+    for line in ["postgresql+asyncpg://MASTER_USER:MASTER_PASSWORD@RDS_ENDPOINT:5432/db",
+                 "postgres://app:Sup3rS3cret9@DB_HOST:5432/app", "mysql://root:DB_PASSWORD@db.internal/app"]:
+        assert not kinds(line), line
+    assert kinds("postgres://app:SUP3RSECRET9@db.prod.internal/app") == ["Credentials in URL"]  # caps, but no _

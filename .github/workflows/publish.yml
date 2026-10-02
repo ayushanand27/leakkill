@@ -60,3 +60,19 @@ jobs:
           major="${TAG%%.*}"
           git tag -f "$major" "$GITHUB_SHA"
           git push -f origin "refs/tags/$major"
+  container:
+    needs: [build, github-release]
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }  # push to ghcr.io/ayushanand27/leakkill
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with: { persist-credentials: false }
+      - name: Build, smoke-test and push the container image
+        env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ needs.build.outputs.tag }}", OWNER: "${{ github.repository_owner }}" }
+        run: |
+          image="ghcr.io/${OWNER,,}/leakkill"
+          docker build -t "$image:${TAG#v}" -t "$image:latest" .
+          docker run --rm "$image:${TAG#v}" --version | grep -q "${TAG#v}"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$image:${TAG#v}"
+          docker push "$image:latest"

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1 (2026-10-02)
+
+- Docker image: `docker run --rm -v "$PWD:/scan" ghcr.io/ayushanand27/leakkill`, published to GitHub
+  Packages with every release (smoke-tested in CI, including `--history`).
+- Credentials in URLs written as templates (`MASTER_USER:MASTER_PASSWORD@RDS_ENDPOINT`) are no longer reported
+  (found when scanning a real machine with `--agents`). URL recall on CredData unchanged (182/209).
+- Docs: `docs/` command reference; CONTRIBUTING.md; OpenSSF Best Practices badge (passing).
+
 ## 0.6.0 (2026-10-02)
 
 - AI agent guard for **Cursor, GitHub Copilot CLI and OpenAI Codex**, in addition to Claude Code:
@@ -19,7 +27,7 @@
 - Coverage-guided fuzzing (Atheris + ClusterFuzzLite) on pull requests and weekly; GitHub releases are
   Sigstore-signed; the CodeQL workflow has pinned actions and least-privilege permissions; Google's sample
   keys in the imported allowlist are written as `AIz[a]...` so GitHub secret scanning stops flagging them.
-- Recall on real code up from 0.217 to 0.300 on Samsung CredData, with precision up from 0.893 to 0.921
+- Recall on real code up from 0.217 to 0.300 on Samsung CredData, with precision up from 0.893 to 0.921 (0.922 in 0.6.1)
   (OpenSSL test vectors excluded; full dataset: recall 0.251 to 0.510, F1 0.386 to 0.630):
   - HTTP Basic auth (`Authorization: Basic …`), reported only when it decodes to a real-looking
     `user:password` (601/601 in CredData, no new false positives).

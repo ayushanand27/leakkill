@@ -14,7 +14,7 @@ settings; TruffleHog with `--no-verification`, so all three are measured on dete
 
 | October 2026 | precision | recall | F1 | precision, worst case |
 |---|---|---|---|---|
-| **leakkill 0.6.0** | 0.824 | 0.510 | **0.630** | 0.805 |
+| **leakkill 0.6.1** | 0.825 | 0.510 | **0.630** | 0.805 |
 | leakkill 0.5.0 | 0.834 | 0.251 | 0.386 | 0.785 |
 | Betterleaks 1.9.0 | 0.712 | **0.562** | 0.628 | 0.688 |
 | Kingfisher 2.9.0 (`--no-validate --no-dedup`) | 0.961 | 0.104 | 0.187 | 0.948 |
@@ -29,7 +29,7 @@ pattern scanner can't tell a test vector from a real `key = ...`), which inflate
 
 | | precision | recall | F1 |
 |---|---|---|---|
-| **leakkill 0.6.0** | 0.921 | 0.300 | 0.453 |
+| **leakkill 0.6.1** | 0.922 | 0.300 | 0.453 |
 | leakkill 0.5.0 | 0.893 | 0.217 | 0.349 |
 | Betterleaks 1.9.0 | 0.585 | **0.379** | **0.460** |
 | Kingfisher 2.9.0 | 0.925 | 0.079 | 0.145 |

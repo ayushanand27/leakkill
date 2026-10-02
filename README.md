@@ -57,7 +57,7 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 | AWS access key and secret | ✅ IAM ARN and account (STS, needs no permissions) | ⚠️ deactivates the key if it has `iam:UpdateAccessKey`, otherwise console steps |
 | SendGrid (`SG.`) | ✅ scopes | ✅ the key deletes itself if it has API-key permissions |
 | Stripe (live and test keys), OpenAI, Anthropic, OpenRouter, Groq, Hugging Face, Replicate, DigitalOcean, npm, Telegram, Slack webhooks | ✅ (account or username where the API returns it) | ❌ the provider has no API for it, so you get the exact page or command |
-| Google API keys, Shopify, PyPI, Docker Hub, Twilio, Postman, Perplexity, Linear, Azure Storage, private keys, JWTs, credentials in URLs, generic high-entropy secrets | detected, not verified | step-by-step rotation guidance |
+| Google API keys, Shopify, PyPI, Docker Hub, Twilio, Postman, Perplexity, Linear, Azure Storage, private keys, JWTs, credentials in URLs and Basic auth headers, generic high-entropy secrets | detected, not verified | step-by-step rotation guidance |
 
 ## How it compares
 
@@ -66,7 +66,7 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 | License / price | MIT, free | Apache 2.0, free | MIT, free | MIT, free | AGPL, free | free for individuals, paid for teams |
 | Runs fully local | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ SaaS |
 | Install | `pip`, zero dependencies | Rust binary | Go binary | Go binary | Go binary | CLI + account |
-| Detection rules | 245 | ~485 | Gitleaks' + more | 150+ | 800+ | 550+ |
+| Detection rules | 246 | ~485 | 463 | 150+ | 800+ | 550+ |
 | Checks if a key is live | ✅ 17 providers | ✅ hundreds | ✅ | ❌ | ✅ 700+ | ✅ |
 | Revokes from the CLI | ✅ 6 providers | ✅ some providers | ❌ | ❌ | ❌ (Enterprise) | partial |
 | Remediation report with ordered steps + history purge | ✅ | HTML report, blast-radius map | ❌ | ❌ | ❌ | ✅ |
@@ -77,13 +77,13 @@ including secrets you already "deleted"), `--exclude-tests` and `--json`.
 **Where each is strongest** (accuracy below): Betterleaks finds the most real credentials; Kingfisher has the
 fewest false alarms and the broadest platform coverage with validation and revocation; TruffleHog verifies the
 most providers. leakkill's niche is a dependency-free `pip install` that goes from finding to revoked key to
-cleanup plan, guards AI coding agents, and is the best of these at passwords embedded in URLs.
+cleanup plan, guards AI coding agents, and is the best of these at passwords embedded in URLs and Basic auth headers.
 
 Figures from each project's documentation, October 2026. Use what fits: running two scanners is common.
 
 ### Detection rules
 
-leakkill's own 31 rules cover the providers it can verify and revoke. On top of those, it includes
+leakkill's own 32 rules cover the providers it can verify and revoke. On top of those, it includes
 **214 provider rules from [Gitleaks](https://github.com/gitleaks/gitleaks)** (MIT), translated to Python by
 [`tools/import_gitleaks.py`](tools/import_gitleaks.py) from a pinned, checksum-verified release, together with
 Gitleaks' entropy thresholds and allowlists. Thank you to the Gitleaks maintainers. See
@@ -125,25 +125,28 @@ SendGrid, Telegram) are covered by tests using simulated API responses.
 On [Samsung CredData](https://github.com/Samsung/CredData), 67,896 lines labeled by people, every tool scored
 by the same script ([details and how to reproduce](benchmarks/README.md)):
 
-| | precision | recall | F1 | without OpenSSL test vectors (P / R) | passwords in URLs |
-|---|---|---|---|---|---|
-| Betterleaks 1.9 | 0.712 | **0.562** | **0.628** | 0.585 / **0.379** | 96/209 |
-| Gitleaks 8.28 | 0.860 | 0.453 | 0.594 | 0.910 / 0.218 | 0/209 |
-| **leakkill 0.5** | 0.834 | 0.251 | 0.386 | 0.893 / 0.217 | **182/209** |
-| Kingfisher 2.9 (no validation) | **0.961** | 0.104 | 0.187 | 0.925 / 0.079 | 20/209 |
-| TruffleHog 3.97 (no verification) | 0.579 | 0.024 | 0.045 | 0.486 / 0.026 | 59/209 |
+| | precision | recall | F1 | without OpenSSL test vectors (P / R / F1) | passwords in URLs | HTTP Basic auth |
+|---|---|---|---|---|---|---|
+| **leakkill 0.6** | 0.824 | 0.510 | **0.630** | 0.919 / 0.300 / 0.452 | **182/209** | **601/601** |
+| Betterleaks 1.9 | 0.712 | **0.562** | 0.628 | 0.585 / **0.379** / **0.460** | 96/209 | 10/601 |
+| Gitleaks 8.28 | 0.860 | 0.453 | 0.594 | 0.910 / 0.218 / 0.351 | 0/209 | 0/601 |
+| Kingfisher 2.9 (no validation) | **0.961** | 0.104 | 0.187 | **0.925** / 0.079 / 0.145 | 20/209 | 5/601 |
+| TruffleHog 3.97 (no verification) | 0.579 | 0.024 | 0.045 | 0.486 / 0.026 / 0.049 | 59/209 | 0/601 |
 
-leakkill is mid-pack: level with Gitleaks on real-world code, behind Betterleaks on recall, behind Kingfisher on
-precision, and well ahead on passwords in URLs. False alarms on clean repositories (requests, flask, django,
-express): 1 / 2 / 3 / 0.
+Compare on the "without OpenSSL test vectors" column: those are public crypto test data, not leaks. There,
+leakkill and Betterleaks are level on F1. Betterleaks finds more credentials (recall 0.379 vs 0.300); leakkill
+raises far fewer false alarms (precision 0.919 vs 0.585). leakkill is far ahead on passwords in URLs and Basic
+auth headers, because it decodes and checks them. The generic rules were tuned on this dataset, which flatters
+leakkill somewhat; false alarms on four clean repositories (requests, flask, django, express) stayed at
+1 / 2 / 3 / 0.
 
 ### How it's tested
 
-- 123 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
+- 128 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
 - Property-based fuzz tests: the scanner never crashes on random input, never prints a raw secret, finds a
   planted token in any surrounding text, and gives the same answer scanning a whole file or line by line.
   (Fuzzing found two real bugs before release: a guard crash and a slow-input case, both fixed.)
-- Every one of the 245 rules is checked in CI against hostile input built from its own keywords, because
+- Every one of the 246 rules is checked in CI against hostile input built from its own keywords, because
   Python's regex engine, unlike Go's, can be made to backtrack for minutes. The sweep found and fixed 4
   such rules among those imported from Gitleaks.
 - Live tests against real APIs with real throwaway keys (above), and of the Claude Code guard in the real CLI.

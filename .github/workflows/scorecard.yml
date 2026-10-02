@@ -5,11 +5,14 @@ on:
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
-permissions: read-all
+permissions:
+  contents: read
 jobs:
   analysis:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      actions: read
       security-events: write  # upload results to the Security tab
       id-token: write         # publish results to the public Scorecard API (for the badge)
     steps:

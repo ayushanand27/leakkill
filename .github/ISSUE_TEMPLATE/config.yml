@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/ayushanand27/leakkill/security/advisories/new
+    about: Don't open a public issue for security problems.

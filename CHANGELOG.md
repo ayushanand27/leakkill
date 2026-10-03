@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0 (2026-10-03)
+
+- `leakkill init`: one command sets a project up: the git pre-commit hook, guards for the AI agents it finds
+  on your machine (config folder or program on the PATH), and a GitHub Actions workflow. It only adds things and
+  never overwrites a file it didn't write; running it again changes nothing.
+- `leakkill scan <url>`: check a repository before you trust it. `https://`, `ssh://`, `git@host:path` and
+  `github.com/owner/repo` are accepted; `ext::` and `file:` are not. The clone is read-only, never asks for a
+  password, skips submodules, and is deleted afterwards. The repo's own `.leakkillignore` and `leakkill:ignore`
+  comments are not honored, and `verify` / `revoke` / `--agents` / `--staged` are refused (they would test or
+  revoke keys that belong to someone else).
+- `install-hook` no longer overwrites a pre-commit hook it didn't write.
+- GitHub issue templates (bug report, feature/provider request); `uvx leakkill scan` in the README.
+
 ## 0.7.4 (2026-10-03)
 
 - **Security fix: scanning a repository can no longer run programs named in that repository's own git config.**

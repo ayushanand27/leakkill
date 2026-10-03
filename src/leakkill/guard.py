@@ -273,6 +273,10 @@ def install_git_hook():
         print("Not a git repo root.", file=sys.stderr)
         return 1
     hook = os.path.join(".git", "hooks", "pre-commit")
+    if os.path.exists(hook) and "leakkill" not in open(hook, encoding="utf-8", errors="replace").read():
+        print(f"{hook} already exists and isn't leakkill's: not overwriting it. Add this line to it yourself:\n"
+              f"  {_self_cmd('scan --staged')} || exit 1", file=sys.stderr)
+        return 1
     cmd = _self_cmd("scan --staged").replace("\\", "/")
     with open(hook, "w", newline="\n") as f:
         f.write(f'#!/bin/sh\n{cmd} || {{ echo "Commit blocked by leakkill."; exit 1; }}\n')

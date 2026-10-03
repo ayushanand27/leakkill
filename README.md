@@ -50,7 +50,7 @@ docker run --rm -v "$PWD:/scan" ghcr.io/ayushanand27/leakkill --history  # every
 | `leakkill install-hook` | Git pre-commit hook that blocks commits containing secrets | Never |
 | `leakkill install-agent-hooks` | Stop AI coding agents (Claude Code, Cursor, GitHub Copilot, OpenAI Codex) reading `.env` and keys, sending secrets in prompts, or writing secrets into code | Never |
 
-Every scan command also accepts `--staged` (pre-commit), `--history` (every commit on every branch,
+Every scan command also accepts `--include-ignored` (also scan `.gitignore`d files, which are left out by default), `--staged` (pre-commit), `--history` (every commit on every branch,
 including secrets you already "deleted"), `--agents` (secrets your AI coding agents stored on this machine, see
 below), `--exclude-tests` and `--json`.
 
@@ -153,7 +153,7 @@ leakkill somewhat; false alarms on four clean repositories (requests, flask, dja
 
 ### How it's tested
 
-- 155 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
+- 163 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
 - Property-based fuzz tests: the scanner never crashes on random input, never prints a raw secret, finds a
   planted token in any surrounding text, and gives the same answer scanning a whole file or line by line.
   (Fuzzing found two real bugs before release: a guard crash and a slow-input case, both fixed.)
@@ -305,7 +305,7 @@ baseline doesn't make it safe: revoke real keys first.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/ayushanand27/leakkill
-    rev: v0.7.1
+    rev: v0.7.2
     hooks:
       - id: leakkill
 ```

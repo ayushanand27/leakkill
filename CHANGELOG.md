@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.2 (2026-10-03)
+
+Found by using leakkill from a clean install the way a newcomer would:
+
+- **Fix: UTF-16 and Latin-1 files were silently skipped**, so a key in a file written by Windows PowerShell's
+  `echo ... > file` (UTF-16) reported "Clean.". leakkill now reads UTF-8, UTF-16 (with or without a BOM) and
+  single-byte text.
+- **Fix: a named pipe (FIFO) in a scanned folder made the scan hang forever.** Only regular files are read now.
+- Files that are too large (over 2 MB) or unreadable are now reported on stderr instead of being skipped quietly.
+- Files that `.gitignore` excludes (your local `.env`) are left out of a scan inside a git repository, because
+  they can never be committed; the scan says how many it left out. Tracked files are always scanned, a folder you
+  name yourself is always scanned, and `--include-ignored` scans everything. Accuracy on CredData is unchanged.
+
 ## 0.7.1 (2026-10-02)
 
 - Friendlier output: after a scan, verify or `--agents` run, one line says what to do next (`leakkill verify`,

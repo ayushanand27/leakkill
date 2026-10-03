@@ -9,6 +9,10 @@ working, whose account is it, how do I revoke it right now, and how do I clean i
 with a plain `pip install` (no dependencies), runs locally, and can stop AI coding agents from reading or writing
 secrets in the first place.
 
+![A real terminal: leakkill finds a live GitHub token, revokes it, and confirms it is dead](https://raw.githubusercontent.com/ayushanand27/leakkill/main/docs/demo.png)
+
+*A real run on a throwaway GitHub token: found **LIVE**, **REVOKED**, then **DEAD**.*
+
 ```console
 $ leakkill verify
 #1   LIVE         GitHub token           ghp_************     config.py:3

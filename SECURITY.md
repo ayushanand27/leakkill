@@ -15,7 +15,8 @@ Especially in scope:
 - `revoke` acting without `--yes`, or on a key that didn't verify as live
 - the AI agent guard (Claude Code, Cursor, Copilot, Codex) being bypassed in a way the README doesn't already list
 - the guard repeating a raw secret back to the agent in its own message
-- anything that lets a malicious repository run code when it is scanned
+- anything that lets a malicious repository run code when it is scanned (git's own hooks into a repo's config
+  are switched off for every git call; `tests/test_real_world.py` checks this)
 
 ## Verifying a release
 

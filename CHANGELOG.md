@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.4 (2026-10-03)
+
+- **Security fix: scanning a repository can no longer run programs named in that repository's own git config.**
+  git can be told to run a program (`core.fsmonitor`, diff text converters, external diff) by a repo's
+  `.git/config` or `.gitattributes`; leakkill's git calls now switch these off. Affected: `--staged` and
+  `--history` since 0.3.0, and every scan inside a git repository since 0.7.2 (the git-ignore lookup). It needed a
+  malicious repository that you then scanned. No exploitation is known. Upgrade if you scan code you don't trust.
+  Found by static analysis (SonarCloud) and confirmed with tests that fail on the old code.
+- A folder name that looks like an option (`--foo`) is just a folder: the path is no longer part of the git command line.
+
 ## 0.7.3 (2026-10-03)
 
 - PyPI listing: search keywords (secret scanning, gitleaks/trufflehog alternative, Cursor, Copilot, Codex, MCP),

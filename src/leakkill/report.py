@@ -3,11 +3,12 @@ import os, subprocess
 from datetime import datetime, timezone
 
 from .providers import LIVE, DEAD, provider
+from .scanner import run_git
 
 
 def tracked_files():
     try:
-        out = subprocess.run(["git", "ls-files", "-z"], capture_output=True, text=True, check=True).stdout
+        out = run_git("ls-files", "-z", text=True, check=True).stdout
         return {os.path.normpath(p) for p in out.split("\0") if p}
     except (OSError, subprocess.CalledProcessError):
         return None  # not a git repo

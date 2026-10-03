@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3 (2026-10-03)
+
+- PyPI listing: search keywords (secret scanning, gitleaks/trufflehog alternative, Cursor, Copilot, Codex, MCP),
+  Python-version and audience classifiers, and links to the docs, source and Docker image.
+
 ## 0.7.2 (2026-10-03)
 
 Found by using leakkill from a clean install the way a newcomer would:

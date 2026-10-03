@@ -417,14 +417,22 @@ def _parallel(fn, items, jobs=None):
     return [f for item in items for f in fn(item)]
 
 
+def run_git(*args, cwd=None, **kw):
+    """Run git in a repository that may be untrusted. A repository's own config can name programs for git to run
+    (core.fsmonitor, diff drivers and text converters), so those are switched off: scanning a repo must never
+    run code from it. `cwd` keeps the folder out of the command line, where a name like `--foo` could be an option."""
+    return subprocess.run(["git", "-c", "core.fsmonitor=false", *args], cwd=cwd, capture_output=True,
+                          env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"}, **kw)
+
+
 def _git_ignored(path):
     """(files, directories) under `path` that git ignores and does not track; empty outside a git repository,
     and empty when `path` itself is ignored (you named a folder like `data/`: you want it scanned)."""
     try:
-        if subprocess.run(["git", "-C", path, "check-ignore", "-q", "."], capture_output=True, timeout=30).returncode == 0:
+        if run_git("check-ignore", "-q", ".", cwd=path, timeout=30).returncode == 0:
             return set(), []
-        r = subprocess.run(["git", "-C", path, "ls-files", "--others", "--ignored", "--exclude-standard",
-                            "--directory", "-z"], capture_output=True, timeout=30)
+        r = run_git("ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z", cwd=path,
+                    timeout=30)
     except (OSError, subprocess.SubprocessError):
         return set(), []
     if r.returncode:
@@ -467,8 +475,7 @@ def scan_paths(paths, jobs=None, include_ignored=False):
 
 
 def _git(*args):
-    return subprocess.run(["git", *args], capture_output=True, text=True,
-                          encoding="utf-8", errors="replace").stdout
+    return run_git(*args, text=True, encoding="utf-8", errors="replace").stdout
 
 
 def _scan_batch(batch):
@@ -507,12 +514,13 @@ def _scan_diff(diff, commit_of_header=None, jobs=None):
 
 
 def scan_staged():
-    return _scan_diff(_git("diff", "--cached", "-U0", "--no-color"))
+    return _scan_diff(_git("diff", "--cached", "-U0", "--no-color", "--no-ext-diff", "--no-textconv"))
 
 
 def scan_history():
     """Every line ever added in any commit on any branch (catches secrets that were 'deleted')."""
-    return _scan_diff(_git("log", "-p", "--all", "-U0", "--no-color", "--format=commit %h"), commit_of_header=True)
+    return _scan_diff(_git("log", "-p", "--all", "-U0", "--no-color", "--no-ext-diff", "--no-textconv",
+                      "--format=commit %h"), commit_of_header=True)
 
 
 def is_test_path(path):

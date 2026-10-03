@@ -97,3 +97,58 @@ def test_naming_an_ignored_folder_scans_it(tmp_path):
     assert {os.path.basename(f.path) for f in scanner.scan_paths([str(tmp_path / "data")])} == {"dump.txt"}
     assert scanner.IGNORED == []
     assert found(tmp_path) == set() and len(scanner.IGNORED) == 1  # but scanning the repo root leaves it out
+
+
+# ---- a scanned repository must never be able to run code through its own git config ----
+posix = pytest.mark.skipif(sys.platform == "win32", reason="uses shell scripts")
+
+
+def evil_script(tmp_path, name, body=""):
+    marker = tmp_path / "PWNED"
+    script = tmp_path / name
+    script.write_text(f"#!/bin/sh\ntouch {marker}\n{body}")
+    script.chmod(0o755)
+    return marker, script
+
+
+def repo_with(tmp_path):
+    work = tmp_path / "repo"
+    work.mkdir()
+    git(work, "init", "-q")
+    git(work, "config", "user.email", "t@example.com")
+    git(work, "config", "user.name", "t")
+    return work
+
+
+@posix
+def test_scanning_a_repo_never_runs_its_fsmonitor(tmp_path):
+    marker, script = evil_script(tmp_path, "hook.sh")
+    work = repo_with(tmp_path)
+    git(work, "config", "core.fsmonitor", str(script))
+    (work / "a.py").write_text("x = 1\n")
+    scanner.scan_paths([str(work)])
+    assert not marker.exists()
+
+
+@posix
+def test_staged_and_history_scans_never_run_diff_drivers(tmp_path, monkeypatch):
+    marker, script = evil_script(tmp_path, "conv.sh", 'cat "$1"\n')
+    work = repo_with(tmp_path)
+    (work / ".gitattributes").write_text("*.py diff=evil\n")
+    git(work, "config", "diff.evil.textconv", str(script))
+    git(work, "config", "diff.external", str(script))
+    (work / "app.py").write_text(LINE)
+    git(work, "add", ".")
+    monkeypatch.chdir(work)
+    assert [f.kind for f in scanner.scan_staged()] == ["GitHub token"]
+    git(work, "commit", "-qm", "x")
+    assert [f.kind for f in scanner.scan_history()] == ["GitHub token"]
+    assert not marker.exists()
+
+
+def test_folder_names_that_look_like_options_are_just_folders(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    odd = tmp_path / "--upload-pack=evil"
+    odd.mkdir()
+    (odd / "a.py").write_text(LINE)
+    assert [f.kind for f in scanner.scan_paths(["--upload-pack=evil"])] == ["GitHub token"]

@@ -11,9 +11,22 @@ license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.9"
 authors = [{ name = "Ayush", email = "andymylove24@gmail.com" }]
-keywords = ["secrets", "security", "leak", "revoke", "pre-commit", "claude-code", "ai-agents", "devsecops"]
+keywords = ["secrets", "secret-scanning", "secret-detection", "api-keys", "leaked-credentials", "credentials",
+            "security", "devsecops", "appsec", "pre-commit", "git-secrets", "gitleaks", "trufflehog", "sarif",
+            "revoke", "ai-agents", "claude-code", "cursor", "copilot", "codex", "mcp", "llm-security"]
 classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Version Control :: Git",
   "Operating System :: OS Independent",
   "Topic :: Security",
   "Environment :: Console",
@@ -21,7 +34,10 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/ayushanand27/leakkill"
+Documentation = "https://github.com/ayushanand27/leakkill/tree/main/docs"
+Source = "https://github.com/ayushanand27/leakkill"
 Issues = "https://github.com/ayushanand27/leakkill/issues"
+Docker = "https://github.com/ayushanand27/leakkill/pkgs/container/leakkill"
 Changelog = "https://github.com/ayushanand27/leakkill/blob/main/CHANGELOG.md"
 
 [project.scripts]

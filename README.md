@@ -305,7 +305,7 @@ baseline doesn't make it safe: revoke real keys first.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/ayushanand27/leakkill
-    rev: v0.7.2
+    rev: v0.7.3
     hooks:
       - id: leakkill
 ```

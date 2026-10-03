@@ -35,6 +35,21 @@ class Item:
     result: providers.Result = None
 
 
+def note_skipped():
+    """Never let "Clean." hide that some files were not looked at."""
+    if scanner.SKIPPED:
+        why = {}
+        for sk in scanner.SKIPPED:
+            why.setdefault(sk.reason, []).append(sk.path)
+        parts = "; ".join(f"{len(v)} {r} (e.g. {', '.join(v[:2])})" for r, v in why.items())
+        print(f"leakkill: skipped {len(scanner.SKIPPED)} file(s) it could not scan: {parts}", file=sys.stderr)
+    if scanner.IGNORED:
+        roots = scanner.IGNORED_ROOTS
+        print(f"leakkill: left out {len(scanner.IGNORED)} git-ignored file(s) (they can't be committed): "
+              f"{', '.join(roots[:3])}{', ...' if len(roots) > 3 else ''}. Add --include-ignored to scan them too.",
+              file=sys.stderr)
+
+
 def collect(args):
     if args.agents:
         found = agents.scan_agents()
@@ -43,7 +58,8 @@ def collect(args):
     elif args.staged:
         found = scanner.scan_staged()
     else:
-        found = scanner.scan_paths(args.paths or ["."])
+        found = scanner.scan_paths(args.paths or ["."], include_ignored=args.include_ignored)
+        note_skipped()
     ignores = scanner.load_ignores()
     found = [f for f in found if not scanner.ignored(f.path, ignores)]
     if args.exclude_tests:
@@ -218,6 +234,7 @@ def parser():
     common.add_argument("--history", action="store_true", help="scan every commit on every branch")
     common.add_argument("--agents", action="store_true",
                         help="scan AI agents' files on this machine: MCP configs, settings, session transcripts")
+    common.add_argument("--include-ignored", action="store_true", help="also scan files that .gitignore excludes")
     common.add_argument("--exclude-tests", action="store_true", help="skip test_* files and tests/ dirs")
     common.add_argument("--json", action="store_true", help="machine-readable output")
     common.add_argument("--baseline", metavar="FILE", help="ignore secrets listed in this baseline file")

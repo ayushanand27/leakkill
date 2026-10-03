@@ -45,11 +45,18 @@ Available on `scan`, `verify`, `revoke` and `report`:
 | `--staged` | Scan staged git changes (what you are about to commit). |
 | `--history` | Scan every commit on every branch, including secrets you already "deleted". |
 | `--agents` | Scan AI agents' files on this machine: MCP configs, settings, session transcripts, Cursor/VS Code chat databases. |
+| `--include-ignored` | Also scan files that `.gitignore` excludes. By default, inside a git repository those are left out (they can never be committed) and the scan says how many it left out; tracked files are always scanned, and a folder you name yourself is always scanned. |
 | `--exclude-tests` | Skip `test_*` files and `tests/` directories. |
 | `--json` | Machine-readable output (see below). |
 | `--baseline FILE` | Ignore secrets recorded in a baseline file. |
 
 Also on `scan` and `verify`: `--report FILE`, `--sarif FILE`, `--write-baseline FILE`.
+
+## What gets scanned
+
+Text files in UTF-8, UTF-16 (what Windows PowerShell writes) and single-byte encodings such as Latin-1. Binary
+files, pipes and sockets are skipped, as are files over 2 MB. Anything it could not read or that was too large is
+reported on stderr, so "Clean." never hides a file leakkill did not look at.
 
 ## Exit codes
 

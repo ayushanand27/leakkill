@@ -1,5 +1,5 @@
 """Find secrets in files, staged changes and git history. Never touches the network."""
-import base64, bisect, fnmatch, math, os, re, subprocess
+import base64, bisect, codecs, fnmatch, math, os, re, stat, subprocess
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 
@@ -352,14 +352,57 @@ def iter_files(paths):
                     yield os.path.join(root, f)
 
 
+MAX_SCAN_BYTES = 2_000_000
+
+
+@dataclass
+class Skipped:
+    path: str
+    reason: str  # "too large" | "unreadable"
+
+
+SKIPPED = []  # files the last scan_paths() could not scan, so callers can say so instead of claiming "Clean."
+IGNORED = []  # git-ignored files the last scan_paths() left out (they can't be committed, so they aren't leaks)
+IGNORED_ROOTS = []  # ...and the ignored folders/files they belong to, for a short message
+
+
+def decode_text(raw):
+    """Bytes -> text for UTF-8 (tried first: the common case), UTF-16 (Windows PowerShell `echo >` writes it) and
+    single-byte text such as Latin-1. Returns None for binary data."""
+    if raw.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        try:
+            return raw.decode("utf-16")
+        except UnicodeDecodeError:
+            return None
+    sample = raw[:4096]
+    if b"\x00" in sample:  # UTF-16 without a BOM looks like ASCII with a NUL on every other byte
+        n = len(sample) // 2
+        odd, even = sample[1::2].count(0), sample[0::2].count(0)
+        enc = "utf-16-le" if odd > 0.9 * n and even < 0.1 * n else "utf-16-be" if even > 0.9 * n and odd < 0.1 * n else None
+        if enc:
+            try:
+                return raw.decode(enc)
+            except UnicodeDecodeError:
+                return None
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return None if b"\x00" in raw[:8192] else raw.decode("latin-1")
+
+
 def _scan_file(f):
     try:
-        if os.path.getsize(f) > 2_000_000:
-            return []
-        with open(f, encoding="utf-8", errors="strict") as fh:
-            return scan_text(fh.read(), os.path.relpath(f))
-    except (UnicodeDecodeError, OSError):
-        return []  # binary / unreadable
+        st = os.stat(f)
+        if not stat.S_ISREG(st.st_mode):
+            return []  # pipes, sockets and devices: opening a pipe blocks forever, and they hold no source code
+        if st.st_size > MAX_SCAN_BYTES:
+            return [Skipped(f, "too large")]
+        with open(f, "rb") as fh:
+            raw = fh.read()
+    except OSError:
+        return [Skipped(f, "unreadable")]
+    text = decode_text(raw)
+    return scan_text(text, os.path.relpath(f)) if text is not None else []
 
 
 def _parallel(fn, items, jobs=None):
@@ -374,9 +417,53 @@ def _parallel(fn, items, jobs=None):
     return [f for item in items for f in fn(item)]
 
 
-def scan_paths(paths, jobs=None):
-    """Scan files, in parallel across CPU cores when there are many of them."""
-    return _parallel(_scan_file, list(iter_files(paths)), jobs)
+def _git_ignored(path):
+    """(files, directories) under `path` that git ignores and does not track; empty outside a git repository,
+    and empty when `path` itself is ignored (you named a folder like `data/`: you want it scanned)."""
+    try:
+        if subprocess.run(["git", "-C", path, "check-ignore", "-q", "."], capture_output=True, timeout=30).returncode == 0:
+            return set(), []
+        r = subprocess.run(["git", "-C", path, "ls-files", "--others", "--ignored", "--exclude-standard",
+                            "--directory", "-z"], capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return set(), []
+    if r.returncode:
+        return set(), []
+    files, dirs = set(), []
+    for rel in r.stdout.decode("utf-8", "replace").split("\0"):
+        if rel:
+            full = os.path.normpath(os.path.join(os.path.abspath(path), rel))
+            (dirs.append(full + os.sep) if rel.endswith("/") else files.add(full))
+    return files, dirs
+
+
+def scan_paths(paths, jobs=None, include_ignored=False):
+    """Scan files, in parallel across CPU cores when there are many of them.
+
+    Inside a git repository, files git ignores (a `.env` in .gitignore) are left out, because they can never be
+    committed; tracked files are always scanned. They are listed in IGNORED; `include_ignored` scans them too."""
+    files = list(iter_files(paths))
+    IGNORED[:] = []
+    IGNORED_ROOTS[:] = []
+    if not include_ignored:
+        skip_files, skip_dirs = set(), []
+        for p in paths:
+            if os.path.isdir(p):
+                f, d = _git_ignored(p)
+                skip_files |= f
+                skip_dirs += d
+        if skip_files or skip_dirs:
+            def root_of(f):  # the git-ignored folder (or the file itself) that covers f, else None
+                full = os.path.normpath(os.path.abspath(f))
+                return full if full in skip_files else next((d for d in skip_dirs if full.startswith(d)), None)
+            roots = {f: root_of(f) for f in files}
+            IGNORED[:] = [f for f in files if roots[f]]
+            IGNORED_ROOTS[:] = sorted({os.path.relpath(roots[f]) + (os.sep if roots[f].endswith(os.sep) else "")
+                                       for f in IGNORED})
+            files = [f for f in files if not roots[f]]
+    out = _parallel(_scan_file, files, jobs)
+    SKIPPED[:] = [r for r in out if isinstance(r, Skipped)]
+    return [r for r in out if not isinstance(r, Skipped)]
 
 
 def _git(*args):

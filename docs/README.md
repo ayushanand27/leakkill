@@ -26,7 +26,9 @@ Without Python: `docker run --rm -v "$PWD:/scan" ghcr.io/ayushanand27/leakkill [
 
 | Command | Does | Network |
 |---|---|---|
+| `leakkill init` | Set this project up: git pre-commit hook, guards for the AI agents found on your machine, and `.github/workflows/leakkill.yml`. Safe to repeat; never overwrites a file it didn't write. | never |
 | `leakkill [scan] [PATH ...]` | Find secrets in files (default `.`). | never |
+| `leakkill scan <url>` | Clone `https://…`, `ssh://…`, `git@host:path` or `github.com/owner/repo` into a temp folder, scan it, delete it. The repo's own `.leakkillignore` and `leakkill:ignore` comments are not honored, and `verify`/`revoke`/`--agents`/`--staged` are refused. | the clone only |
 | `leakkill verify [PATH ...]` | Scan, then ask each secret's issuer whether it is live and whose it is (read-only identity calls). | yes, only to the issuer |
 | `leakkill revoke [PATH ...] [--only 1,3] [--yes]` | Verify, then list what can be revoked. Revokes only live keys, and only with `--yes`. | only with `--yes` |
 | `leakkill report [PATH ...] [-o FILE] [--no-verify] [--replacements FILE]` | Write a Markdown incident report (default `leakkill-report.md`). `--replacements` writes a `git filter-repo --replace-text` file (owner-only, never overwrites). | like `verify` |

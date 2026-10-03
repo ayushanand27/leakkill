@@ -308,7 +308,7 @@ def _scan(text, path=None):
     out = {}
     for ln in sorted(raw):
         end = starts[ln] if ln < len(starts) else len(text)
-        if "leakkill:ignore" in text[starts[ln - 1]:end]:
+        if INLINE_IGNORE and "leakkill:ignore" in text[starts[ln - 1]:end]:
             continue
         hits = []
         for kind, val in raw[ln]:  # rule order first, then position: a specific rule beats a generic one
@@ -352,6 +352,7 @@ def iter_files(paths):
                     yield os.path.join(root, f)
 
 
+INLINE_IGNORE = True  # honor `leakkill:ignore` comments; switched off when scanning a repository you don't trust
 MAX_SCAN_BYTES = 2_000_000
 
 
@@ -417,12 +418,12 @@ def _parallel(fn, items, jobs=None):
     return [f for item in items for f in fn(item)]
 
 
-def run_git(*args, cwd=None, **kw):
+def run_git(*args, cwd=None, env_extra=None, **kw):
     """Run git in a repository that may be untrusted. A repository's own config can name programs for git to run
     (core.fsmonitor, diff drivers and text converters), so those are switched off: scanning a repo must never
     run code from it. `cwd` keeps the folder out of the command line, where a name like `--foo` could be an option."""
     return subprocess.run(["git", "-c", "core.fsmonitor=false", *args], cwd=cwd, capture_output=True,
-                          env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"}, **kw)
+                          env={**os.environ, "GIT_OPTIONAL_LOCKS": "0", **(env_extra or {})}, **kw)
 
 
 def _git_ignored(path):

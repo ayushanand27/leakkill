@@ -4,6 +4,8 @@
   leakkill verify [PATH ...]         ...and check which are live and whose they are (exit 1 if any live)
   leakkill revoke [PATH ...]         plan revocation of live secrets; add --yes to do it
   leakkill report [PATH ...]         write an incident report with step-by-step cleanup
+  leakkill init                      set this project up in one step: git hook, AI agent guards, CI workflow
+  leakkill scan <github-url>         scan a repository before you trust it (clones to a temp folder, then deletes it)
   leakkill install-hook              block commits that contain secrets (git pre-commit)
   leakkill install-agent-hooks [AGENT ...] [--global]
                                      stop AI agents (claude, cursor, copilot, codex) reading .env/keys,
@@ -20,10 +22,10 @@ import argparse, difflib, json, os, sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-from . import __version__, agents, baseline, guard as guard_mod, providers, report, sarif, scanner
+from . import __version__, agents, baseline, guard as guard_mod, onboard, providers, remote, report, sarif, scanner
 
 LEGACY = {"--guard": "guard", "--install-hook": "install-hook", "--install-claude-hook": "install-claude-hook"}
-COMMANDS = {"scan", "verify", "revoke", "report", "guard", "install-hook", "install-claude-hook", "install-agent-hooks"}
+COMMANDS = {"scan", "verify", "revoke", "report", "guard", "install-hook", "install-claude-hook", "install-agent-hooks", "init"}
 
 
 @dataclass
@@ -60,7 +62,7 @@ def collect(args):
     else:
         found = scanner.scan_paths(args.paths or ["."], include_ignored=args.include_ignored)
         note_skipped()
-    ignores = scanner.load_ignores()
+    ignores = [] if getattr(args, "untrusted", False) else scanner.load_ignores()
     found = [f for f in found if not scanner.ignored(f.path, ignores)]
     if args.exclude_tests:
         found = [f for f in found if not scanner.is_test_path(f.path)]
@@ -256,6 +258,7 @@ def parser():
     rp.add_argument("--replacements", metavar="FILE", help="also write a git filter-repo --replace-text file")
     g = sub.add_parser("guard", help="AI agent hook entry point (reads hook JSON on stdin)")
     g.add_argument("--agent", choices=guard_mod.AGENTS, default="claude")
+    sub.add_parser("init", help="set this project up: git hook, AI agent guards, CI workflow")
     ia = sub.add_parser("install-agent-hooks", help="guard AI coding agents against secret leaks")
     ia.add_argument("agents", nargs="*", metavar="AGENT",
                     help="claude, cursor, copilot, codex (default: all)")
@@ -276,6 +279,45 @@ def check_paths(paths):
     return not missing
 
 
+def run_scan_command(args):
+    if args.cmd == "revoke":
+        return cmd_revoke(args)
+    if args.cmd == "report":
+        return cmd_report(args)
+    return cmd_scan(args, verify=args.cmd == "verify")
+
+
+def scan_remote(args, url):
+    """Scan someone else's repository: read-only, never contacting providers about keys that aren't yours."""
+    if args.cmd in ("verify", "revoke"):
+        print(f"leakkill: `{args.cmd}` doesn't work on a remote repository: it would test or revoke keys that "
+              "belong to someone else. Run `leakkill scan <url>` to see what is in it; for a repository you own, "
+              f"clone it and run `leakkill {args.cmd}` on the local copy.", file=sys.stderr)
+        return 2
+    if args.agents or args.staged:
+        print("leakkill: --agents and --staged only apply to this machine, not a remote repository.", file=sys.stderr)
+        return 2
+    for name in ("output", "report", "sarif", "write_baseline", "baseline", "replacements"):
+        if getattr(args, name, None):
+            setattr(args, name, os.path.abspath(getattr(args, name)))  # we change folder below
+    args.no_verify, args.untrusted = True, True
+    origin = os.getcwd()
+    print(f"Cloning {remote.safe_url(url)} read-only; the copy is deleted afterwards...", file=sys.stderr)
+    try:
+        with remote.checkout(url, full_history=args.history) as work:
+            try:
+                os.chdir(work)
+                args.paths = ["."]
+                scanner.INLINE_IGNORE = False  # a repository you don't trust doesn't get to hide its own findings
+                return run_scan_command(args)
+            finally:
+                os.chdir(origin)
+                scanner.INLINE_IGNORE = True
+    except RuntimeError as e:
+        print(f"leakkill: could not clone {remote.safe_url(url)}: {e}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] in LEGACY:
@@ -283,8 +325,12 @@ def main(argv=None):
     if not argv or (argv[0] not in COMMANDS and argv[0] not in ("-h", "--help", "--version")):
         argv.insert(0, "scan")
     args = parser().parse_args(argv)
+    if args.cmd in ("scan", "verify", "revoke", "report") and len(args.paths) == 1 and remote.parse(args.paths[0]):
+        return scan_remote(args, remote.parse(args.paths[0]))
     if args.cmd in ("scan", "verify", "revoke", "report") and not check_paths(args.paths):
         return 2
+    if args.cmd == "init":
+        return onboard.run()
     if args.cmd == "guard":
         return guard_mod.guard(sys.stdin.read(), args.agent)
     if args.cmd == "install-agent-hooks":
@@ -297,11 +343,7 @@ def main(argv=None):
         return guard_mod.install_git_hook()
     if args.cmd == "install-claude-hook":
         return guard_mod.install_claude_hook()
-    if args.cmd == "revoke":
-        return cmd_revoke(args)
-    if args.cmd == "report":
-        return cmd_report(args)
-    return cmd_scan(args, verify=args.cmd == "verify")
+    return run_scan_command(args)
 
 
 def main_cli():

@@ -1,0 +1,14 @@
+name: Feature or provider request
+description: A new detection rule, a service to check live, an AI tool to guard, or an idea
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like leakkill to do?
+      description: For a new service, name it and link its "who am I" / token-check API page if you know it.
+    validations: { required: true }
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter to you?

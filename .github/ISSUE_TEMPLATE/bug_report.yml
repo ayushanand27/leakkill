@@ -1,0 +1,30 @@
+name: Bug report
+description: leakkill missed a secret, flagged something that isn't one, crashed, or behaved oddly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! **Never paste a real key**, even a revoked one: use a fake that looks the same (change the middle characters).
+        Security problems: please use [private reporting](https://github.com/ayushanand27/leakkill/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: A fake line or command that shows it
+      description: For a missed or false secret, the line of text (with a fake value) is usually enough.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Output of `leakkill --version`
+    validations: { required: true }
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, macOS, Linux, Docker]

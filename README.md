@@ -29,6 +29,8 @@ $ leakkill revoke --only 1 --yes
 pip install leakkill
 ```
 
+Try it without installing: `uvx leakkill scan` or `pipx run leakkill scan` (scans the current folder).
+
 Python 3.9+, no dependencies. Latest development version:
 `pip install git+https://github.com/ayushanand27/leakkill`
 
@@ -43,7 +45,9 @@ docker run --rm -v "$PWD:/scan" ghcr.io/ayushanand27/leakkill --history  # every
 
 | Command | What it does | Network? |
 |---|---|---|
+| `leakkill init` | Set a project up in one step: the git hook, the guards for the AI agents you use, and a CI workflow. Adds only, never overwrites. | **Never** |
 | `leakkill [scan] [PATH ...]` | Find secrets. Exit code 1 if any. | **Never** |
+| `leakkill scan <github-url>` | Check a repository **before you trust it**: clones read-only to a temp folder, scans, deletes it (`--history` for every commit). Only scans; `verify`/`revoke` are refused, because they would test keys that belong to someone else. | Only the clone |
 | `leakkill verify` | Also check each secret against the provider that issued it: live or dead, which account, which scopes | Read-only "who am I" calls |
 | `leakkill revoke` | Show what can be revoked. With `--yes`, revoke the live ones (`--only 1,3` to pick) | Only with `--yes` |
 | `leakkill report` | Write `leakkill-report.md`: every leak, its status and owner, and the cleanup steps in order | Same as `verify` (`--no-verify` to skip) |
@@ -153,7 +157,7 @@ leakkill somewhat; false alarms on four clean repositories (requests, flask, dja
 
 ### How it's tested
 
-- 166 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
+- 191 tests on Linux, macOS and Windows with Python 3.9 and 3.13; CI fails below 88% branch coverage (currently 93%).
 - Property-based fuzz tests: the scanner never crashes on random input, never prints a raw secret, finds a
   planted token in any surrounding text, and gives the same answer scanning a whole file or line by line.
   (Fuzzing found two real bugs before release: a guard crash and a slow-input case, both fixed.)
@@ -305,7 +309,7 @@ baseline doesn't make it safe: revoke real keys first.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/ayushanand27/leakkill
-    rev: v0.7.4
+    rev: v0.8.0
     hooks:
       - id: leakkill
 ```

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fix (project infrastructure, not the package): the weekly ClusterFuzzLite fuzzing could not build between 0.6.1
+  and now, because the `.dockerignore` added for the Docker image also hid the fuzzer's files from its build.
+  Found by the scheduled run failing; a test now guards it.
+
 ## 0.8.0 (2026-10-03)
 
 - `leakkill init`: one command sets a project up: the git pre-commit hook, guards for the AI agents it finds

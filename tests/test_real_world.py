@@ -152,3 +152,14 @@ def test_folder_names_that_look_like_options_are_just_folders(tmp_path, monkeypa
     odd.mkdir()
     (odd / "a.py").write_text(LINE)
     assert [f.kind for f in scanner.scan_paths(["--upload-pack=evil"])] == ["GitHub token"]
+
+
+def test_dockerignore_keeps_what_the_fuzzer_image_copies():
+    """The root .dockerignore (for the leakkill image) also applies to the ClusterFuzzLite build, which copies the
+    whole repository: excluding its inputs silently broke the weekly fuzzing in 0.6.1."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    allowed = {l[1:].strip() for l in open(os.path.join(root, ".dockerignore")) if l.startswith("!")}
+    needed = {"src/leakkill", ".clusterfuzzlite", "fuzz"}
+    assert needed <= allowed, f"add to .dockerignore: {sorted('!' + n for n in needed - allowed)}"
+    for n in needed:
+        assert os.path.exists(os.path.join(root, n)), n

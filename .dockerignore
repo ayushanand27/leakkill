@@ -1,3 +1,5 @@
 *
 !src/leakkill
+!.clusterfuzzlite
+!fuzz
 src/leakkill/__pycache__

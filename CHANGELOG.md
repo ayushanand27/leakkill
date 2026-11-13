@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- README now leads with the AI-agent check (`uvx leakkill scan --agents`).
+- Cleanup: removed two provider entries that a later entry already replaced (no behaviour change) and unused imports.
+- CI: the Python 3.9 tests run on Ubuntu 24.04, because the newer runner image no longer offers 3.9.
 - Fix (project infrastructure, not the package): the weekly ClusterFuzzLite fuzzing could not build between 0.6.1
   and now, because the `.dockerignore` added for the Docker image also hid the fuzzer's files from its build.
   Found by the scheduled run failing; a test now guards it.

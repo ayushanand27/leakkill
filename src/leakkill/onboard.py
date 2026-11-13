@@ -2,7 +2,7 @@
 
 It only adds things, never overwrites a file it didn't write, and says what it did and what it skipped.
 """
-import os, shutil, sys
+import os, shutil
 
 from . import guard
 

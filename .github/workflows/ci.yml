@@ -18,7 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # ubuntu-24.04, not ubuntu-latest: the newer image no longer offers Python 3.9, which we still support.
+        os: [ubuntu-24.04, windows-latest, macos-latest]
         python: ["3.9", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:

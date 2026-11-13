@@ -415,8 +415,6 @@ PROVIDERS = {
     "PyPI token": Provider(None, None, "Remove it at https://pypi.org/manage/account/token/."),
     "Docker Hub token": Provider(None, None, "Delete it in Docker Hub: Account settings > Personal access tokens."),
     "Twilio API key": Provider(None, None, "Delete it in the Twilio console: Account > API keys & tokens."),
-    "Postman key": Provider(None, None, "Delete it in Postman: Settings > API keys."),
-    "Linear key": Provider(None, None, "Revoke it in Linear: Settings > Security & access > Personal API keys."),
     "Azure storage key": Provider(None, None, "Rotate it in the Azure portal: Storage account > Security + networking > "
                                               "Access keys > Rotate key."),
     "Anthropic API key": Provider(anthropic_verify, None, "Delete it at https://console.anthropic.com/settings/keys."),

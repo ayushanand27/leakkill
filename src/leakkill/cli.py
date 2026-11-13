@@ -197,7 +197,7 @@ def cmd_revoke(args):
             print(f"  note for #{i.n} {i.kind}: {providers.provider(i.kind).side_effect}")
     if not args.yes:
         if auto:
-            print(f"\nDry run. Re-run with --yes to revoke: " + ", ".join(f"#{i.n}" for i in auto))
+            print("\nDry run. Re-run with --yes to revoke: " + ", ".join(f"#{i.n}" for i in auto))
         return 1
     failed = 0
     for i in auto:

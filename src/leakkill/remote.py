@@ -7,7 +7,7 @@ For checking a repository before you trust it. Cloning untrusted code is the ris
   hardening as every other leakkill git call (no repository-configured programs);
 - the clone is deleted afterwards, even when the scan fails.
 """
-import contextlib, os, re, shutil, stat, subprocess, tempfile
+import contextlib, os, re, shutil, stat, tempfile
 
 URL = re.compile(r"^(?:https://[^\s/]+/\S+|ssh://\S+|[\w.-]+@[\w.-]+:\S+)$")
 SHORT = re.compile(r"^(github\.com|gitlab\.com|bitbucket\.org|codeberg\.org)/[\w.-]+/[\w.-]+$")

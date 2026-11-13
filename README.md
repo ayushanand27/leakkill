@@ -2,15 +2,15 @@
 
 [![PyPI](https://img.shields.io/pypi/v/leakkill)](https://pypi.org/project/leakkill/) [![CI](https://github.com/ayushanand27/leakkill/actions/workflows/ci.yml/badge.svg)](https://github.com/ayushanand27/leakkill/actions/workflows/ci.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ayushanand27/leakkill/badge)](https://scorecard.dev/viewer/?uri=github.com/ayushanand27/leakkill) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15151/badge)](https://www.bestpractices.dev/projects/15151)
 
-**Your AI coding agent has probably saved your API keys in plain text. Find them, see which are still live, and kill them in one command. Free, local, zero dependencies.**
+**Your AI coding agent has probably saved your API keys in plain text. Find them with one command, then check which are still live and revoke them. Free, local, zero dependencies.**
 
 ```sh
 uvx leakkill scan --agents     # nothing to install: what Claude Code, Cursor, Copilot, Codex and Gemini CLI kept on this machine
-uvx leakkill scan              # ...and the secrets in this folder
+uvx leakkill scan              # ...and the secrets in this folder (git-ignored files such as .env are skipped: add --include-ignored)
 ```
 
 A key you paste into a chat, or a `.env` the agent reads, stays on disk in its session history. leakkill finds
-those, and the ones in your code and git history, then answers what comes next: is this key still working, whose
+those, and the ones in your code and git history. `leakkill verify` and `leakkill revoke` then answer what comes next: is this key still working, whose
 account is it, how do I revoke it right now, and how do I clean it out of git history? It can also
 [stop agents reading or writing secrets](#ai-coding-agent-guard) in the first place. Everything runs on your
 machine; nothing is uploaded.

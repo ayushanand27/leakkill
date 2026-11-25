@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI tooling: bumped `certifi` to 2026.11.20 (Dependabot critical: removed emSign roots in older versions) and `setuptools` to 84.2.1 on Python 3.10+. Python 3.9 stays on setuptools 82.0.1 because 84.x needs 3.10. Dev and release tooling only, not part of the package.
 - Package metadata: removed the author email from `pyproject.toml`; contact through GitHub issues.
 - Fix: `tools/import_gitleaks.py` no longer raises a SyntaxWarning (a docstring with a regex in it is now a raw string).
 - README now leads with the AI-agent check (`uvx leakkill scan --agents`).

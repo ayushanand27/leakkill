@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.1 (2026-11-25)
+
 - `verify` can now check Mailgun private API keys (`key-...`) with a read-only domains call. It tries the US and EU hosts and reports DEAD only if both answer 401. Now 33 services.
 - CI tooling: bumped `certifi` to 2026.11.20 (Dependabot critical: removed emSign roots in older versions) and `setuptools` to 84.2.1 on Python 3.10+. Python 3.9 stays on setuptools 82.0.1 because 84.x needs 3.10. Dev and release tooling only, not part of the package.
 - Package metadata: removed the author email from `pyproject.toml`; contact through GitHub issues.

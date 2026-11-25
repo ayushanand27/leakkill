@@ -90,7 +90,7 @@ below), `--exclude-tests` and `--json`.
 | Runs fully local | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ SaaS |
 | Install | `pip` (zero dependencies) or Docker | Rust binary | Go binary | Go binary | Go binary | CLI + account |
 | Detection rules | 246 | ~485 | 463 | 150+ | 800+ | 550+ |
-| Checks if a key is live | ✅ 32 services | ✅ hundreds | ✅ | ❌ | ✅ 700+ | ✅ |
+| Checks if a key is live | ✅ 33 services | ✅ hundreds | ✅ | ❌ | ✅ 700+ | ✅ |
 | Revokes from the CLI | ✅ 6 providers | ✅ some providers | ❌ | ❌ | ❌ (Enterprise) | partial |
 | Remediation report with ordered steps + history purge | ✅ | HTML report, blast-radius map | ❌ | ❌ | ❌ | ✅ |
 | Guards AI coding agents | ✅ Claude Code, Cursor, Copilot, Codex | ❌ | ❌ | ❌ | ❌ | ✅ (hooks, paid platform) |

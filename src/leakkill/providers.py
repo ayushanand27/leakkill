@@ -361,6 +361,22 @@ def cloudflare_verify(s, ctx):
     return _by_status(code)
 
 
+def mailgun_verify(s, ctx):
+    # Mailgun has two regions with separate hosts and a key only works on its own. A US-host 401 can therefore
+    # be an EU key, so a key is DEAD only when both hard-coded hosts answer 401.
+    auth = {"Authorization": "Basic " + base64.b64encode(f"api:{s}".encode()).decode()}
+    codes = []
+    for host in ("api.mailgun.net", "api.eu.mailgun.net"):
+        code, _, body = http("GET", f"https://{host}/v3/domains?limit=1", auth)
+        if code == 200:
+            n = _json(body).get("total_count")
+            return Result(LIVE, f"{n} domain(s)" if n is not None else "", "EU region" if "eu." in host else "")
+        codes.append(code)
+    if all(c == 401 for c in codes):
+        return Result(DEAD)
+    return Result(UNKNOWN, note=f"unexpected HTTP {codes[0]}/{codes[1]}")
+
+
 def mailchimp_verify(s, ctx):
     dc = s.rsplit("-", 1)[-1]
     if not re.fullmatch(r"us\d{1,2}", dc):  # the data center picks the host, so it must look like one
@@ -451,6 +467,8 @@ PROVIDERS = {
                                           "Delete it in LaunchDarkly: Organization settings > Authorization."),
     "Cloudflare API key": Provider(cloudflare_verify, None, "Roll or delete it at https://dash.cloudflare.com/profile/api-tokens."),
     "Mailchimp API key": Provider(mailchimp_verify, None, "Delete it in Mailchimp: Profile > Extras > API keys."),
+    "Mailgun private API token": Provider(mailgun_verify, None,
+                                          "Regenerate it in Mailgun: Account security > API security > Private API key."),
     "High-entropy secret": Provider(None, None, "Treat as compromised: rotate it with whoever issued it."),
 }
 

@@ -208,6 +208,24 @@ def test_new_providers_live_dead_unknown(fake, kind, method, url, body, who):
     assert P.verify(kind, key).status == P.LIVE  # odd body: still live, just no identity
 
 
+def test_mailgun_checks_both_regions_and_needs_two_401s_for_dead(fake):
+    us, eu = "https://api.mailgun.net/v3/domains", "https://api.eu.mailgun.net/v3/domains"
+    key = "key-" + "a1" * 16
+    fake({("GET", us): (200, {}, b'{"total_count": 2}')})
+    r = P.verify("Mailgun private API token", key)
+    assert r.status == P.LIVE and r.identity == "2 domain(s)"
+    f = fake({("GET", us): (401, {}, b""), ("GET", eu): (200, {}, b'{"total_count": 1}')})
+    r = P.verify("Mailgun private API token", key)  # an EU key is rejected by the US host but still live
+    assert r.status == P.LIVE and r.note == "EU region" and len(f.calls) == 2
+    assert f.calls[0][2]["Authorization"] == "Basic " + __import__("base64").b64encode(f"api:{key}".encode()).decode()
+    fake({("GET", us): (401, {}, b""), ("GET", eu): (401, {}, b"")})
+    assert P.verify("Mailgun private API token", key).status == P.DEAD
+    fake({("GET", us): (401, {}, b""), ("GET", eu): (403, {}, b"")})  # only 401 on both hosts may mean DEAD
+    assert P.verify("Mailgun private API token", key).status == P.UNKNOWN
+    fake({("GET", us): (200, {}, b"not json")})
+    assert P.verify("Mailgun private API token", key).status == P.LIVE
+
+
 def test_cloudflare_and_mailchimp_edges(fake):
     url = "https://api.cloudflare.com/client/v4/user/tokens/verify"
     fake({("GET", url): (200, {}, b'{"result": {"status": "active"}}')})

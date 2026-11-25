@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.9"
-authors = [{ name = "Ayush", email = "andymylove24@gmail.com" }]
+authors = [{ name = "Ayush Anand" }]
 keywords = ["secrets", "secret-scanning", "secret-detection", "api-keys", "leaked-credentials", "credentials",
             "security", "devsecops", "appsec", "pre-commit", "git-secrets", "gitleaks", "trufflehog", "sarif",
             "revoke", "ai-agents", "claude-code", "cursor", "copilot", "codex", "mcp", "llm-security"]

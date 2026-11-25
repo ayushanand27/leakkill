@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Package metadata: removed the author email from `pyproject.toml`; contact through GitHub issues.
+- Fix: `tools/import_gitleaks.py` no longer raises a SyntaxWarning (a docstring with a regex in it is now a raw string).
 - README now leads with the AI-agent check (`uvx leakkill scan --agents`).
 - Cleanup: removed two provider entries that a later entry already replaced (no behaviour change) and unused imports.
 - CI: the Python 3.9 tests run on Ubuntu 24.04, because the newer runner image no longer offers 3.9.

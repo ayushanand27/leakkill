@@ -59,7 +59,7 @@ CURL_SPAN_LINEAR = r"[^\r\n]{0,300}?(?:[\r\n]{1,2}[^\r\n]{0,300}?){0,5}"  # same
 
 
 def harden(rx):
-    """Drop leading optional name prefixes (they can always match nothing, so which secret is found doesn't change;
+    r"""Drop leading optional name prefixes (they can always match nothing, so which secret is found doesn't change;
     stacked ones like `[\w.-]{0,50}?(?i:[\w.-]{0,50}?...` are quadratic in Python), and bound curl's multi-line
     spans so each line split is forced instead of searched."""
     changed = True

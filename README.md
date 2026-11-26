@@ -241,7 +241,7 @@ API keys. A key you pasted into a chat, or a `.env` the agent read, stays on dis
 model provider. `--agents` scans, on your machine only:
 
 - Claude Code (`~/.claude.json`, `~/.claude/` including session transcripts), Codex (`~/.codex/`), GitHub
-  Copilot CLI (`~/.copilot/`), Gemini CLI (`~/.gemini/`), Cursor and VS Code (Copilot Chat) chat histories, Cursor, Windsurf, Claude Desktop and VS Code MCP configs
+  Copilot CLI (`~/.copilot/`), Gemini CLI (`~/.gemini/`), Cursor, Windsurf and VS Code (Copilot Chat) chat histories, Continue (`~/.continue/`), Cline and Roo Code task histories, Zed conversations and settings, Cursor, Windsurf, Claude Desktop and VS Code MCP configs
 - this project's `.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.claude/settings*.json`, `.gemini/settings.json`
 
 Transcripts are decoded, so a key behind JSON escapes is still found and reported at its line. The agents' own

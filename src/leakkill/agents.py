@@ -20,22 +20,38 @@ HOME_PLACES = [
     ("Claude Desktop", "Library/Application Support/Claude/claude_desktop_config.json", False),
     ("VS Code", ".config/Code/User/mcp.json", False),
     ("VS Code", "Library/Application Support/Code/User/mcp.json", False),
+    ("Continue", ".continue", True),
+    ("Zed", ".config/zed/settings.json", False),
+    ("Zed", ".local/share/zed/conversations", True),
+    ("Zed", "Library/Application Support/Zed/conversations", True),
 ]
-APPDATA_PLACES = [("Claude Desktop", "Claude/claude_desktop_config.json"), ("VS Code", "Code/User/mcp.json")]
+APPDATA_PLACES = [("Claude Desktop", "Claude/claude_desktop_config.json"), ("VS Code", "Code/User/mcp.json"),
+                  ("Zed", "Zed/settings.json")]
 PROJECT_PLACES = [".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json", ".claude/settings.json",
                   ".claude/settings.local.json", ".gemini/settings.json", ".codex/config.toml"]
 ENV_HOMES = {"CLAUDE_CONFIG_DIR": "Claude Code", "CODEX_HOME": "Codex", "COPILOT_HOME": "GitHub Copilot CLI"}
 # The agent's own login (expected to hold a token), and bulky caches/third-party code that isn't the user's.
 SKIP_NAMES = {".credentials.json", "auth.json", "oauth_creds.json", "google_accounts.json", "plugins", "extensions",
-              "node_modules", "pkg", "statsig", "ide", ".git", "cache", "Cache"}
-TEXT_EXT = {".json", ".jsonl", ".toml", ".yaml", ".yml", ".md", ".txt", ".log", ".env", ".sh", ".ini", ".cfg", ""}
+              "node_modules", "pkg", "statsig", "ide", ".git", "cache", "Cache", "checkpoints"}
+TEXT_EXT = {".json", ".jsonl", ".toml", ".yaml", ".yml", ".md", ".txt", ".log", ".env", ".sh", ".ini", ".cfg", ".zed", ""}
 # Cursor and VS Code (Copilot Chat) keep chats in SQLite databases (state.vscdb) under the editor's user folder.
 EDITOR_DIRS = {"Cursor": ["Library/Application Support/Cursor/User", ".config/Cursor/User"],
-               "VS Code": ["Library/Application Support/Code/User", ".config/Code/User"]}
-EDITOR_APPDATA = {"Cursor": "Cursor/User", "VS Code": "Code/User"}
+               "VS Code": ["Library/Application Support/Code/User", ".config/Code/User"],
+               "Windsurf": ["Library/Application Support/Windsurf/User", ".config/Windsurf/User"]}
+EDITOR_APPDATA = {"Cursor": "Cursor/User", "VS Code": "Code/User", "Windsurf": "Windsurf/User"}
+# Extensions that keep whole task histories as files in the editor's globalStorage (any editor above can host them).
+EXTENSION_DIRS = {"Cline": "saoudrizwan.claude-dev", "Roo Code": "rooveterinaryinc.roo-cline"}
 DB_TABLES = ("ItemTable", "cursorDiskKV")  # key/value tables; chats are JSON values
 MAX_FILE = 500_000_000
 CHUNK = 1_000_000
+
+
+def _editor_roots(home, env):
+    """User folders of the editors that keep chat state: [path]."""
+    roots = [os.path.join(home, d) for ds in EDITOR_DIRS.values() for d in ds]
+    if env.get("APPDATA"):
+        roots += [os.path.join(env["APPDATA"], d) for d in EDITOR_APPDATA.values()]
+    return roots
 
 
 def places(home=None, cwd=None, env=None):
@@ -47,6 +63,8 @@ def places(home=None, cwd=None, env=None):
     if env.get("APPDATA"):
         out += [(a, os.path.join(env["APPDATA"], p)) for a, p in APPDATA_PLACES]
     out += [(a, env[k]) for k, a in ENV_HOMES.items() if env.get(k)]
+    out += [(a, os.path.join(root, "globalStorage", ext)) for root in _editor_roots(home, env)
+            for a, ext in EXTENSION_DIRS.items()]
     out += [("this project", os.path.join(cwd, p)) for p in PROJECT_PLACES]
     seen, found = set(), []
     for agent, p in out:

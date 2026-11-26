@@ -107,3 +107,41 @@ def test_cursor_and_vscode_chat_databases(tmp_path):
     hits = [(f.kind, f.path) for f in fs]
     assert ("GitHub token", os.path.join("~", ".config", "Cursor", "User", "workspaceStorage", "abc", "state.vscdb")
             + "#cursorDiskKV") in hits
+
+
+def test_more_agents_continue_cline_roo_zed_windsurf(tmp_path):
+    import sqlite3
+    home = tmp_path / "h"
+
+    def put(rel, text):
+        p = home / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text)
+
+    chat = json.dumps({"messages": [{"content": f"my token {GH}"}]})
+    put(".continue/sessions/s1.json", chat)
+    cline = ".config/Code/User/globalStorage/saoudrizwan.claude-dev"
+    put(cline + "/tasks/1/api_conversation_history.json", chat)
+    put(cline + "/checkpoints/big/blob.json", chat)  # shadow-git copies of the user's files: skipped
+    put(".config/Cursor/User/globalStorage/rooveterinaryinc.roo-cline/tasks/2/ui_messages.json", chat)
+    put(".local/share/zed/conversations/c1.zed", chat)
+    put(".config/zed/settings.json", json.dumps({"context_servers": {"x": {"env": {"TOKEN": GH}}}}))
+    ws = home / ".config" / "Windsurf" / "User" / "globalStorage"
+    ws.mkdir(parents=True)
+    con = sqlite3.connect(ws / "state.vscdb")
+    con.execute("CREATE TABLE ItemTable (key TEXT, value BLOB)")
+    con.execute("INSERT INTO ItemTable VALUES ('chat', ?)", (chat.encode(),))
+    con.commit(); con.close()
+
+    found = {a for a, _ in agents.places(str(home), str(tmp_path), env={})}
+    assert {"Continue", "Cline", "Roo Code", "Zed"} <= found
+    assert [a for a, _ in agents.editor_dbs(str(home), env={})] == ["Windsurf"]
+    paths = {f.path for f in agents.scan_agents(str(home), str(tmp_path), env={}, quiet=True)
+             if f.kind == "GitHub token"}
+    sep = os.sep
+    for want in (".continue/sessions/s1.json", cline + "/tasks/1/api_conversation_history.json",
+                 ".config/Cursor/User/globalStorage/rooveterinaryinc.roo-cline/tasks/2/ui_messages.json",
+                 ".local/share/zed/conversations/c1.zed", ".config/zed/settings.json",
+                 ".config/Windsurf/User/globalStorage/state.vscdb#ItemTable"):
+        assert os.path.join("~", *want.split("/")) in paths, want
+    assert not any("checkpoints" in p for p in paths)

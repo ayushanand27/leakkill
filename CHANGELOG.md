@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.2 (2026-11-26)
+
 - `scan --agents` now also reads Continue (`~/.continue/`), Cline and Roo Code task histories (in the VS Code, Cursor or Windsurf `globalStorage` folder), Zed conversations and settings, and Windsurf's chat database. The locations follow each tool's documented defaults and are covered by tests with fake folders, not yet checked against a real install of every tool. Cline's `checkpoints` folder (copies of your files) is skipped.
 ## 0.8.1 (2026-11-25)
 
